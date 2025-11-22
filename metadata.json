@@ -1,0 +1,7 @@
+{
+  "name": "مُقدم العروض الذكي (Smart Presenter)",
+  "description": "تطبيق لعرض الشرائح والتحكم بها باستخدام إيماءات اليد عبر الكاميرا والذكاء الاصطناعي.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
