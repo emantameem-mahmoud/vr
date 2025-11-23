@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v21-log-fix';
+const CACHE_NAME = 'smart-presenter-v23-layout-polish';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

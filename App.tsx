@@ -7,7 +7,7 @@ import { DEMO_SLIDES } from './constants';
 import { GestureAction, Slide } from './types';
 
 const App: React.FC = () => {
-  // State
+  // --- State ---
   const [slides, setSlides] = useState<Slide[]>(DEMO_SLIDES);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -15,67 +15,61 @@ const App: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [volume, setVolume] = useState(50);
   const [showVolume, setShowVolume] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isCursorHidden, setIsCursorHidden] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  
+
+  // Initialize dark mode carefully to avoid flash
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('theme');
+        if (saved) return saved === 'dark';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch (e) { console.error(e); }
+    return true; // Default to dark
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cursorTimeoutRef = useRef<number | null>(null);
 
   // --- Effects ---
 
-  // PWA Install Prompt Listener
+  // Apply Theme
   useEffect(() => {
-    const handler = (e: any) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      setInstallPrompt(e);
-    };
+    const root = document.documentElement;
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const color = isDarkMode ? '#0f172a' : '#f8fafc';
 
-    window.addEventListener('beforeinstallprompt', handler);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-    };
-  }, []);
-
-  // Theme Sync
-  useEffect(() => {
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.body.style.backgroundColor = '#0f172a';
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
-      document.body.style.backgroundColor = '#f8fafc';
+      root.classList.remove('dark');
     }
+    
+    root.style.backgroundColor = color;
+    metaThemeColor?.setAttribute('content', color);
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  // Fullscreen Listener
+  // Fullscreen & Cursor
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullScreenMode(!!document.fullscreenElement);
-    };
+    const handleFullscreenChange = () => setIsFullScreenMode(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Cursor Auto-Hide in Fullscreen
   useEffect(() => {
     const handleMouseMove = () => {
       setIsCursorHidden(false);
       if (cursorTimeoutRef.current) clearTimeout(cursorTimeoutRef.current);
-      
       if (isFullScreenMode) {
-        cursorTimeoutRef.current = window.setTimeout(() => {
-          setIsCursorHidden(true);
-        }, 3000);
+        cursorTimeoutRef.current = window.setTimeout(() => setIsCursorHidden(true), 3000);
       }
     };
-
     document.addEventListener('mousemove', handleMouseMove);
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
@@ -83,25 +77,27 @@ const App: React.FC = () => {
     };
   }, [isFullScreenMode]);
 
-  // Reset zoom on slide change
   useEffect(() => {
     setZoomLevel(1);
   }, [currentSlideIndex]);
+
+  // PWA Install Prompt
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   // --- Actions ---
 
   const handleInstallClick = useCallback(async () => {
     if (!installPrompt) return;
-    
-    // Show the install prompt
     installPrompt.prompt();
-    
-    // Wait for the user to respond to the prompt
     const { outcome } = await installPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    
-    // We've used the prompt, and can't use it again, throw it away
-    setInstallPrompt(null);
+    if(outcome === 'accepted') setInstallPrompt(null);
   }, [installPrompt]);
 
   const toggleTheme = useCallback(() => setIsDarkMode(p => !p), []);
@@ -137,13 +133,11 @@ const App: React.FC = () => {
     setTimeout(() => setShowVolume(false), 2000);
   }, []);
 
-  // Gesture Logic
   const handleGesture = useCallback((action: GestureAction) => {
     if (action === GestureAction.PAUSE) {
       setIsPaused(true);
       return;
     }
-
     if (isPaused) return;
 
     switch (action) {
@@ -153,54 +147,33 @@ const App: React.FC = () => {
       case GestureAction.VOL_UP: handleVolume('up'); break;
       case GestureAction.VOL_DOWN: handleVolume('down'); break;
       case GestureAction.CHANGE_THEME: toggleTheme(); break;
-      case GestureAction.ZOOM_IN: 
-        setZoomLevel(prev => (prev >= 2.5 ? 1 : prev + 0.5));
-        break;
-      case GestureAction.ZOOM_OUT: 
-        setZoomLevel(prev => Math.max(1, prev - 0.5));
-        break;
+      case GestureAction.ZOOM_IN: setZoomLevel(prev => (prev >= 2.5 ? 1 : prev + 0.5)); break;
+      case GestureAction.ZOOM_OUT: setZoomLevel(prev => Math.max(1, prev - 0.5)); break;
     }
   }, [nextSlide, prevSlide, handleVolume, isPaused, toggleTheme]);
 
-  // Keyboard Navigation
+  // Keyboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'f' || e.key === 'F') {
-        toggleFullScreen();
-        return;
-      }
-      
+      if (e.key === 'f' || e.key === 'F') { toggleFullScreen(); return; }
       if (isPaused && e.key !== 'Escape') return;
 
       switch(e.key) {
-        case 'ArrowRight':
-        case 'ArrowDown':
-        case ' ': // Spacebar
-        case 'PageDown':
-          nextSlide();
-          break;
-        case 'ArrowLeft':
-        case 'ArrowUp':
-        case 'PageUp':
-          prevSlide();
-          break;
-        case 'Escape':
-          if (isPaused) setIsPaused(false);
-          break;
+        case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown': nextSlide(); break;
+        case 'ArrowLeft': case 'ArrowUp': case 'PageUp': prevSlide(); break;
+        case 'Escape': if (isPaused) setIsPaused(false); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextSlide, prevSlide, isPaused, toggleFullScreen]);
 
-  // --- File Handling ---
-
+  // File Upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsLoading(true);
-
     try {
       const file = files[0];
       const isPPT = file.name.toLowerCase().endsWith('.pptx');
@@ -209,10 +182,8 @@ const App: React.FC = () => {
         const zip = new JSZip();
         const content = await zip.loadAsync(file);
         
-        const slideFiles = Object.keys(content.files).filter(name => 
-          name.match(/ppt\/slides\/slide\d+\.xml/)
-        );
-        
+        // Find slides
+        const slideFiles = Object.keys(content.files).filter(name => name.match(/ppt\/slides\/slide\d+\.xml/));
         slideFiles.sort((a: string, b: string) => {
           const numA = parseInt(a.match(/slide(\d+)\.xml/)?.[1] || "0");
           const numB = parseInt(b.match(/slide(\d+)\.xml/)?.[1] || "0");
@@ -227,7 +198,6 @@ const App: React.FC = () => {
            const xmlText = await content.files[fileName].async("string");
            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
            
-           // Text extraction
            const textNodes = xmlDoc.getElementsByTagName("a:t");
            const texts: string[] = [];
            for(let i = 0; i < textNodes.length; i++) {
@@ -235,7 +205,6 @@ const App: React.FC = () => {
               if (txt && txt.trim()) texts.push(txt.trim());
            }
 
-           // Image extraction
            const slideImages: string[] = [];
            try {
              const relsFileName = `ppt/slides/_rels/slide${slideNumber}.xml.rels`;
@@ -258,15 +227,12 @@ const App: React.FC = () => {
                   }
                }
              }
-           } catch (err) {
-             console.warn(`Skipping images for slide ${slideNumber}`, err);
-           }
+           } catch (err) { console.warn("Image extraction error", err); }
 
+           // Build Slide
            let mainImage = "https://picsum.photos/800/600?grayscale&blur=2";
            let isImageOnly = false;
-           
            if (slideImages.length > 0) mainImage = slideImages[0];
-
            if (texts.length < 2 && slideImages.length > 0) isImageOnly = true;
 
            if (texts.length > 0 || slideImages.length > 0) {
@@ -281,21 +247,15 @@ const App: React.FC = () => {
              });
            }
         }
-
         if (newSlides.length > 0) {
           setSlides(newSlides);
           setCurrentSlideIndex(0);
           setShowIntro(false);
           setIsCameraActive(true);
-        } else {
-          alert("لم يتم العثور على محتوى نصي أو صور في الملف.");
-        }
-
+        } else { alert("لم يتم العثور على محتوى في الملف."); }
       } else {
         // Image Mode
-        const fileArray: File[] = Array.from(files);
-        fileArray.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-
+        const fileArray = (Array.from(files) as File[]).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
         const newSlides: Slide[] = fileArray.map((f, index) => ({
           id: index + 1,
           title: f.name.split('.')[0],
@@ -305,178 +265,115 @@ const App: React.FC = () => {
           bulletPoints: [],
           isImageOnly: true
         }));
-
         setSlides(newSlides);
         setCurrentSlideIndex(0);
         setShowIntro(false);
         setIsCameraActive(true);
       }
-
     } catch (error) {
-      console.error("File parsing error:", error);
-      alert("حدث خطأ أثناء معالجة الملف. الرجاء المحاولة مرة أخرى.");
+      console.error("Parse error:", error);
+      alert("حدث خطأ في قراءة الملف.");
     } finally {
       setIsLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // Styles
-  const hiddenInFullscreen = `transition-opacity duration-500 ${isFullScreenMode ? 'opacity-0 pointer-events-none delay-300 hover:opacity-100 hover:delay-0' : 'opacity-100'}`;
+  // --- Classes ---
+  const hiddenInFullscreen = `transition-opacity duration-500 ${isFullScreenMode ? 'opacity-0 pointer-events-none hover:opacity-100' : 'opacity-100'}`;
   const cursorClass = isCursorHidden ? 'cursor-hidden' : '';
 
-  // --- Render Intro ---
-  
+  // --- View: Intro ---
   if (showIntro) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-[#8D6E63] to-[#3E2723] text-white font-sans overflow-hidden relative">
-        
-        {/* Background Decoration */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
+      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-4 bg-slate-900 text-white relative overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-slate-900 z-0"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none z-0"></div>
 
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
-           {/* Install Button (Only if supported) */}
+        <div className="absolute top-4 right-4 z-20 flex gap-3">
            {installPrompt && (
-              <button 
-                onClick={handleInstallClick}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-full font-bold shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                تثبيت التطبيق
+              <button onClick={handleInstallClick} className="px-3 py-1.5 bg-emerald-600 rounded-full text-sm font-bold shadow-lg flex items-center gap-2 animate-pulse">
+                <span>⬇️</span> تثبيت
               </button>
            )}
-          <button onClick={toggleTheme} className="p-2 bg-black/20 hover:bg-black/30 rounded-full backdrop-blur-sm transition-all transform hover:scale-110">
-            {isDarkMode ? '☀️' : '🌙'}
+          <button onClick={toggleTheme} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
+            {isDarkMode ? '🌙' : '☀️'}
           </button>
         </div>
 
-        <div className="max-w-5xl w-full bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 border border-white/20 text-center relative z-10">
-          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
-            مدرسة الشمال الابتدائية بنات
-          </h1>
-          <div className="h-1 w-32 bg-primary mx-auto rounded-full mb-4"></div>
-          <p className="text-xl text-slate-200 mb-8 tracking-wide font-light">مُقدم العروض الذكي | Smart Presenter</p>
+        <div className="w-full max-w-4xl bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 p-6 sm:p-12 relative z-10 flex flex-col items-center text-center max-h-[90dvh] overflow-y-auto custom-scrollbar">
+          <div className="mb-6">
+            <h1 className="text-3xl sm:text-5xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+               مدرسة الشمال الابتدائية بنات
+            </h1>
+            <p className="text-slate-400 text-sm sm:text-lg">مُقدم العروض الذكي | Smart Presenter</p>
+          </div>
           
-          {/* Gesture Grid */}
-          <div className="grid grid-cols-3 md:grid-cols-7 gap-3 mb-10 text-right justify-center">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-3 mb-8 w-full">
             {[
-              { i: '👍', l: 'التالي' },
-              { i: '👎', l: 'السابق' },
-              { i: '✋', l: 'توقف' },
-              { i: '✌️', l: 'رفع الصوت', c: 'text-emerald-300' },
-              { i: '✊', l: 'خفض الصوت', c: 'text-rose-300' },
-              { i: '☝️', l: 'تكبير', c: 'text-blue-300' },
-              { i: '🤟', l: 'تصغير', c: 'text-blue-300' },
+              { i: '👍', l: 'التالي' }, { i: '👎', l: 'السابق' }, { i: '✋', l: 'توقف' },
+              { i: '✌️', l: 'صوت+' }, { i: '✊', l: 'صوت-' },
+              { i: '☝️', l: 'تكبير' }, { i: '🤟', l: 'تصغير' },
             ].map((g, idx) => (
-              <div key={idx} className="bg-black/30 p-3 rounded-xl flex flex-col items-center text-center gap-2 hover:bg-black/40 transition cursor-help group border border-white/5">
-                <span className="text-3xl group-hover:scale-110 transition-transform">{g.i}</span>
-                <p className={`text-xs font-bold ${g.c || 'text-slate-200'}`}>{g.l}</p>
+              <div key={idx} className="bg-slate-800/50 p-2 rounded-lg flex flex-col items-center border border-white/5">
+                <span className="text-2xl mb-1">{g.i}</span>
+                <span className="text-[10px] text-slate-300">{g.l}</span>
               </div>
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch">
+          <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
             <button 
               onClick={() => { setShowIntro(false); setIsCameraActive(true); }}
-              disabled={isLoading}
-              className="px-8 py-4 bg-primary hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-primary/30 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2"
+              className="px-8 py-4 bg-gradient-to-r from-primary to-indigo-600 hover:from-indigo-500 hover:to-primary rounded-xl font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95 flex items-center justify-center gap-2"
             >
-               <span>📽️</span> بدء العرض التجريبي
+               🚀 بدء العرض
             </button>
-
             <button 
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl shadow-lg transition-all duration-300 transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 border border-white/10"
+              className="px-8 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
             >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <span>📂</span>
-                  <span>رفع ملف (PPTX / صور)</span>
-                </>
-              )}
+              {isLoading ? 'جاري المعالجة...' : '📂 رفع ملف (PPTX)'}
             </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              accept=".pptx,.ppt,image/*" 
-              multiple 
-              className="hidden" 
-            />
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".pptx,.ppt,image/*" multiple className="hidden" />
           </div>
-          <p className="mt-6 text-xs text-slate-300 opacity-60">يدعم التطبيق ملفات PowerPoint (.pptx) والصور. يعمل بدون انترنت.</p>
         </div>
       </div>
     );
   }
 
-  // --- Render App ---
-
+  // --- View: App ---
   return (
-    <div className={`relative w-full h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-300 select-none ${cursorClass}`}>
+    <div className={`relative w-full h-[100dvh] overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-300 select-none ${cursorClass}`}>
       
-      {/* Top Controls */}
-      <div className={`fixed top-4 left-0 w-full px-4 z-50 flex justify-between items-start pointer-events-none`}>
-        
-        {/* Home */}
+      {/* --- Top Bar --- */}
+      <div className={`fixed top-0 left-0 w-full p-2 z-50 flex justify-between items-center pointer-events-none`}>
         <button 
           onClick={handleGoHome}
-          className={`pointer-events-auto p-2 bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-slate-200 dark:border-slate-600 backdrop-blur hover:bg-slate-100 dark:hover:bg-slate-700 transition ${hiddenInFullscreen}`}
-          title="خروج"
+          className={`pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${hiddenInFullscreen}`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-slate-700 dark:text-slate-200">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <svg className="w-5 h-5 text-slate-700 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
 
-        {/* Header */}
-        <div className={`pointer-events-auto bg-white/90 dark:bg-slate-800/90 px-6 py-2 rounded-full border border-slate-200 dark:border-slate-700 backdrop-blur shadow-lg transition-opacity duration-500 ${isFullScreenMode ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
-          <h1 className="text-sm font-bold text-slate-900 dark:text-white">مدرسة الشمال الابتدائية بنات</h1>
-        </div>
+        <h1 className={`text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-4 py-1 rounded-full backdrop-blur border border-slate-200 dark:border-slate-700 transition ${hiddenInFullscreen}`}>
+          مدرسة الشمال الابتدائية بنات
+        </h1>
 
-        {/* Fullscreen */}
         <button 
           onClick={toggleFullScreen}
-          className={`pointer-events-auto p-2 bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-slate-200 dark:border-slate-600 backdrop-blur hover:bg-slate-100 dark:hover:bg-slate-700 transition ${hiddenInFullscreen}`}
-          title="ملء الشاشة (F)"
+          className={`pointer-events-auto p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${hiddenInFullscreen}`}
         >
           {isFullScreenMode ? (
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-slate-700 dark:text-slate-200">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
-            </svg>
+            <svg className="w-5 h-5 text-slate-700 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" /></svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-slate-700 dark:text-slate-200">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-            </svg>
+            <svg className="w-5 h-5 text-slate-700 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
           )}
         </button>
       </div>
 
-      {/* Footer Info */}
-      <div className={`fixed bottom-4 left-0 w-full px-4 z-40 flex justify-between items-end pointer-events-none ${hiddenInFullscreen}`}>
-         {/* Left: Counter handled by App layout below */}
-         <div /> 
-
-         {/* Center: Vision */}
-         <div className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 px-6 py-2 rounded-xl border border-slate-200 dark:border-slate-700 backdrop-blur shadow-lg text-center mb-8">
-            <p className="text-sm font-bold text-primary dark:text-secondary">الرؤية: متعلم ريادي تنمية مستدامة</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">إعداد: إيمان محمود | مديرة المدرسة: مريم الحسيني</p>
-         </div>
-
-         {/* Right: Manual Nav */}
-         <div className="pointer-events-auto flex flex-col gap-2 mb-12">
-             <button onClick={toggleTheme} className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-full shadow border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">
-               {isDarkMode ? '☀️' : '🌙'}
-             </button>
-         </div>
-      </div>
-
-      {/* Slides Area */}
+      {/* --- Main Content --- */}
       <div className="relative w-full h-full">
         {slides.map((slide, index) => (
           <SlideView 
@@ -488,83 +385,81 @@ const App: React.FC = () => {
         ))}
       </div>
 
-      {/* Feedback Overlays */}
+      {/* --- Overlays --- */}
+      {/* Volume */}
       <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none transition-all duration-300 ${showVolume ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
-         <div className="bg-black/70 backdrop-blur-lg p-8 rounded-3xl flex flex-col items-center shadow-2xl border border-white/10">
+         <div className="bg-black/70 backdrop-blur-lg p-8 rounded-3xl flex flex-col items-center shadow-2xl">
            <span className="text-white text-5xl mb-4">🔊</span>
-           <div className="w-48 h-2 bg-slate-600/50 rounded-full overflow-hidden">
-             <div className="h-full bg-primary transition-all duration-200" style={{ width: `${volume}%` }}></div>
+           <div className="w-48 h-2 bg-slate-600 rounded-full overflow-hidden">
+             <div className="h-full bg-primary transition-all" style={{ width: `${volume}%` }}></div>
            </div>
-           <span className="text-white mt-3 font-mono text-xl">{volume}%</span>
          </div>
       </div>
 
-      {/* Zoom Indicator */}
+      {/* Zoom Badge */}
       {zoomLevel !== 1 && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-blue-600/90 text-white px-4 py-1 rounded-full backdrop-blur shadow-lg flex items-center gap-2 animate-pulse pointer-events-none">
-           <span>🔍</span>
-           <span className="font-bold text-sm">Zoom {zoomLevel}x</span>
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-blue-600/90 text-white px-4 py-1 rounded-full shadow-lg animate-pulse pointer-events-none text-sm font-bold">
+           🔍 {zoomLevel}x
         </div>
       )}
 
       {/* Pause Overlay */}
       {isPaused && (
-        <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn">
-          <div className="bg-slate-800 p-10 rounded-3xl shadow-2xl text-center border border-slate-700 max-w-md mx-4 transform transition-all">
-            <div className="text-7xl mb-6 animate-bounce">✋</div>
-            <h2 className="text-3xl font-bold text-white mb-3">العرض متوقف</h2>
-            <p className="text-slate-400 mb-8">اضغط متابعة لاستئناف التحكم بالإيماءات</p>
-            <button 
-              onClick={() => setIsPaused(false)}
-              className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg text-lg"
-            >
-              متابعة العرض
+        <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-800 p-8 rounded-2xl text-center border border-slate-700 shadow-2xl max-w-sm w-full">
+            <div className="text-6xl mb-4 animate-bounce">✋</div>
+            <h2 className="text-2xl font-bold text-white mb-2">العرض متوقف</h2>
+            <button onClick={() => setIsPaused(false)} className="mt-6 w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition">
+              استئناف
             </button>
           </div>
         </div>
       )}
 
-      {/* Progress Line */}
+      {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-slate-200/20 z-50">
-        <div 
-          className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
-          style={{ width: `${((currentSlideIndex + 1) / slides.length) * 100}%` }}
-        />
+        <div className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500" style={{ width: `${((currentSlideIndex + 1) / slides.length) * 100}%` }} />
       </div>
 
-      {/* Manual Slide Nav (Bottom Right) */}
-      <div className={`fixed bottom-8 right-6 z-50 flex gap-3 ${hiddenInFullscreen}`}>
-          <button 
-            onClick={nextSlide}
-            disabled={currentSlideIndex === slides.length - 1}
-            className="p-4 rounded-full bg-primary text-white shadow-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </button>
-      </div>
+      {/* --- Bottom Controls --- */}
       
-      <div className={`fixed bottom-8 right-24 z-50 flex gap-3 ${hiddenInFullscreen}`}>
-         <button 
-            onClick={prevSlide}
-            disabled={currentSlideIndex === 0}
-            className="p-4 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-lg hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-          </button>
+      {/* Mobile-Optimized Nav Buttons (Left/Right Split) */}
+      <div className={`fixed bottom-0 left-0 w-full p-4 flex justify-between items-end z-40 pointer-events-none ${hiddenInFullscreen}`}>
+          
+          {/* Left Side: Prev Button (positioned after Webcam space) */}
+          <div className="pointer-events-auto ml-16 sm:ml-0">
+             <button 
+                onClick={prevSlide}
+                disabled={currentSlideIndex === 0}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 active:scale-95 disabled:opacity-50 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+             </button>
+          </div>
+
+          {/* Center Info (Hidden on mobile to save space) */}
+          <div className="hidden sm:block pointer-events-auto bg-white/90 dark:bg-slate-800/90 px-4 py-2 rounded-xl backdrop-blur border border-slate-200 dark:border-slate-700 shadow-sm mb-2">
+             <p className="text-sm font-bold text-primary dark:text-secondary">الرؤية: متعلم ريادي تنمية مستدامة</p>
+          </div>
+
+          {/* Right Side: Next Button */}
+          <div className="pointer-events-auto flex gap-4 items-end">
+             {/* Slide Counter */}
+             <div className="hidden sm:block bg-black/50 text-white px-3 py-1 rounded-lg backdrop-blur text-sm font-mono mb-3">
+               {currentSlideIndex + 1} / {slides.length}
+             </div>
+
+             <button 
+               onClick={nextSlide}
+               disabled={currentSlideIndex === slides.length - 1}
+               className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 disabled:opacity-50 transition-all hover:bg-indigo-600"
+             >
+               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+             </button>
+          </div>
       </div>
 
-      {/* Slide Counter */}
-      <div className={`fixed bottom-8 left-24 z-40 ${hiddenInFullscreen}`}>
-        <div className="bg-black/50 text-white px-4 py-2 rounded-lg backdrop-blur-sm font-mono text-sm border border-white/10">
-          {currentSlideIndex + 1} / {slides.length}
-        </div>
-      </div>
-
-      {/* Webcam Widget */}
+      {/* Webcam (Bottom Left Fixed) */}
       <WebcamHandler 
         isActive={isCameraActive} 
         isPaused={isPaused}
