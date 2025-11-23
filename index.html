@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SmartPresenter">
     
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     
     <title>Smart Presenter | مُقدم العروض الذكي</title>
     
@@ -84,30 +84,52 @@
 </head>
   <body class="bg-slate-900 text-white transition-colors duration-300 selection:bg-primary selection:text-white overflow-hidden">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
     <script>
-      // PWA Service Worker Registration with Auto-Update logic
+      // Robust PWA Service Worker Registration
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(registration => {
+        window.addEventListener('load', async () => {
+          // Check for supported protocols. Service Workers don't work on blob: or data:
+          if (window.location.protocol === 'blob:' || window.location.protocol === 'data:') {
+            console.log('Service Worker registration skipped: running in blob/data protocol.');
+            return;
+          }
+
+          try {
+            // Use standard relative path. The browser will resolve this against the correct origin.
+            // This prevents "Origin Mismatch" errors and avoids manual string construction issues.
+            const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
             console.log('SW registered: ', registration);
             
-            // Check for updates
+            // Check for updates mechanism
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
+              console.log("New worker detected");
+              
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New content detected, notify user or auto-reload
-                  console.log('New update available.');
-                  if (confirm('يتوفر تحديث جديد للتطبيق. هل تريد التحديث الآن؟')) {
+                  // Show update toast (simple alert for now)
+                  console.log('New update installed and ready.');
+                  const shouldUpdate = confirm('تم إصدار تحديث جديد للتطبيق! هل تريد إعادة التحميل الآن لتفعيله؟');
+                  if (shouldUpdate) {
                     window.location.reload();
                   }
                 }
               });
             });
-          }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-          });
+
+          } catch (error) {
+            console.error('SW registration failed: ', error);
+          }
+        });
+        
+        // Ensure controller change refreshes the page
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            window.location.reload();
+            refreshing = true;
+          }
         });
       }
     </script>

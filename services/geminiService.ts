@@ -9,22 +9,31 @@ let initError = false;
 export const initializeModel = async () => {
   if (isInitializing || gestureRecognizer || initError) return;
   isInitializing = true;
+
+  // Suppress specific INFO logs from MediaPipe/TFLite that users might mistake for errors
+  const originalLog = console.log;
+  const originalInfo = console.info;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  const originalDebug = console.debug;
+  
+  const filterLog = (args: any[]) => {
+      const msg = args.map(a => String(a)).join(' ');
+      // Filter out the XNNPACK info message and other TFLite initialization logs
+      if (msg.includes('XNNPACK') || msg.includes('TensorFlow Lite') || msg.includes('delegate for CPU')) return true;
+      return false;
+  };
+
+  console.log = (...args) => { if(!filterLog(args)) originalLog(...args); };
+  console.info = (...args) => { if(!filterLog(args)) originalInfo(...args); };
+  console.warn = (...args) => { if(!filterLog(args)) originalWarn(...args); };
+  console.error = (...args) => { if(!filterLog(args)) originalError(...args); };
+  console.debug = (...args) => { if(!filterLog(args)) originalDebug(...args); };
+
   try {
     const vision = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
     );
-    
-    // Suppress specific INFO logs that users might mistake for errors
-    const originalLog = console.log;
-    const originalInfo = console.info;
-    
-    const filterLog = (args: any[]) => {
-        if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('XNNPACK')) return true;
-        return false;
-    };
-
-    console.log = (...args) => { if(!filterLog(args)) originalLog(...args); };
-    console.info = (...args) => { if(!filterLog(args)) originalInfo(...args); };
 
     gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
       baseOptions: {
@@ -34,16 +43,20 @@ export const initializeModel = async () => {
       runningMode: "VIDEO"
     });
 
+    // Use originalLog to ensure this specific success message is printed
+    originalLog("MediaPipe Model Loaded successfully");
+  } catch (e) {
+    originalError("Failed to load MediaPipe", e);
+    initError = true;
+  } finally {
     // Restore console logs
     console.log = originalLog;
     console.info = originalInfo;
-
-    console.log("MediaPipe Model Loaded successfully");
-  } catch (e) {
-    console.error("Failed to load MediaPipe", e);
-    initError = true;
+    console.warn = originalWarn;
+    console.error = originalError;
+    console.debug = originalDebug;
+    isInitializing = false;
   }
-  isInitializing = false;
 };
 
 // Accept HTMLVideoElement instead of base64
@@ -105,6 +118,7 @@ export const identifyGesture = async (videoSource: HTMLVideoElement): Promise<De
             return { action, confidence: score, boundingBox };
         }
     } catch (err) {
+        // Suppress benign runtime errors if needed, but usually we want to see real errors
         console.error("Detection Error:", err);
     }
     

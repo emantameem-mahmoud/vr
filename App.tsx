@@ -20,11 +20,28 @@ const App: React.FC = () => {
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isCursorHidden, setIsCursorHidden] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cursorTimeoutRef = useRef<number | null>(null);
 
   // --- Effects ---
+
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handler = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
 
   // Theme Sync
   useEffect(() => {
@@ -72,6 +89,20 @@ const App: React.FC = () => {
   }, [currentSlideIndex]);
 
   // --- Actions ---
+
+  const handleInstallClick = useCallback(async () => {
+    if (!installPrompt) return;
+    
+    // Show the install prompt
+    installPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await installPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // We've used the prompt, and can't use it again, throw it away
+    setInstallPrompt(null);
+  }, [installPrompt]);
 
   const toggleTheme = useCallback(() => setIsDarkMode(p => !p), []);
 
@@ -303,7 +334,19 @@ const App: React.FC = () => {
         {/* Background Decoration */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
 
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+           {/* Install Button (Only if supported) */}
+           {installPrompt && (
+              <button 
+                onClick={handleInstallClick}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-full font-bold shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                تثبيت التطبيق
+              </button>
+           )}
           <button onClick={toggleTheme} className="p-2 bg-black/20 hover:bg-black/30 rounded-full backdrop-blur-sm transition-all transform hover:scale-110">
             {isDarkMode ? '☀️' : '🌙'}
           </button>
@@ -366,7 +409,7 @@ const App: React.FC = () => {
               className="hidden" 
             />
           </div>
-          <p className="mt-6 text-xs text-slate-300 opacity-60">يدعم التطبيق ملفات PowerPoint (.pptx) والصور.</p>
+          <p className="mt-6 text-xs text-slate-300 opacity-60">يدعم التطبيق ملفات PowerPoint (.pptx) والصور. يعمل بدون انترنت.</p>
         </div>
       </div>
     );
