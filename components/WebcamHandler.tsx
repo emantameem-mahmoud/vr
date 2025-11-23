@@ -11,27 +11,23 @@ interface WebcamHandlerProps {
 interface DetectionState {
   action: GestureAction;
   label: string;
-  status: 'waiting' | 'success' | 'error' | 'rate_limit' | 'processing';
+  status: 'waiting' | 'success' | 'error' | 'loading';
 }
 
 const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActive, isPaused = false }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const timeoutRef = useRef<number | null>(null);
-  const animationRef = useRef<number | null>(null);
+  const isMountedRef = useRef<boolean>(true); 
   
-  // Configuration
-  const delayRef = useRef<number>(6000); // Dynamic delay
-  const lastActionTimeRef = useRef<number>(0);
-  const COOLDOWN_MS = 2500; // Prevent double triggers
+  const requestRef = useRef<number | null>(null);
+  const lastDetectionTimeRef = useRef<number>(0);
+  const lastActionRef = useRef<GestureAction>(GestureAction.NONE);
+  const actionCooldownRef = useRef<number>(0);
   
-  // State
-  const [processing, setProcessing] = useState(false);
   const [detectionState, setDetectionState] = useState<DetectionState>({
     action: GestureAction.NONE,
-    label: "جاري الاستعداد...",
-    status: 'waiting'
+    label: "تحميل النموذج...",
+    status: 'loading'
   });
   const [boundingBox, setBoundingBox] = useState<BoundingBox | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -41,54 +37,54 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
       return saved !== 'false'; 
     } catch { return true; }
   });
-  
-  // Timer visualization
-  const [timerProgress, setTimerProgress] = useState(0);
-  const [visualDelay, setVisualDelay] = useState(6000);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, []);
 
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
+      if (videoRef.current && videoRef.current.srcObject) {
+         const s = videoRef.current.srcObject as MediaStream;
+         s.getTracks().forEach(t => t.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 }, 
+          width: { ideal: 320 },
+          height: { ideal: 240 }, 
           facingMode: 'user',
           frameRate: { ideal: 30 }
         } 
       });
       
-      if (videoRef.current) {
+      if (videoRef.current && isMountedRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch(console.error);
+            if(isMountedRef.current) videoRef.current?.play().catch(console.error);
         };
       }
     } catch (err) {
       console.error("Error accessing webcam:", err);
-      setCameraError("تعذر الوصول للكاميرا. يرجى التحقق من الإذن.");
+      if (isMountedRef.current) setCameraError("تعذر الوصول للكاميرا.");
     }
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     if (isActive) {
       startCamera();
     } else {
-      // Stop stream if not active
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
       }
     }
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
   }, [isActive, startCamera]);
 
   const toggleMirror = () => {
@@ -97,8 +93,9 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
     localStorage.setItem('webcam_mirror', String(newState));
   };
 
-  // Draw Bounding Box and Scanning Effect
   const drawOverlay = useCallback(() => {
+    if (!isMountedRef.current) return;
+
     const video = videoRef.current;
     const canvas = overlayCanvasRef.current;
     
@@ -107,7 +104,6 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Match canvas size to video
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -121,199 +117,116 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
       ctx.scale(-1, 1);
     }
 
-    // Draw Bounding Box if exists and recent
-    if (boundingBox && detectionState.status === 'success' && !processing) {
+    // Draw Bounding Box
+    if (boundingBox && detectionState.status === 'success') {
       const { ymin, xmin, ymax, xmax } = boundingBox;
       const x = xmin * canvas.width;
       const y = ymin * canvas.height;
       const w = (xmax - xmin) * canvas.width;
       const h = (ymax - ymin) * canvas.height;
 
-      ctx.strokeStyle = '#10b981'; // Emerald 500
+      ctx.strokeStyle = '#10b981'; 
       ctx.lineWidth = 4;
-      ctx.lineJoin = 'round';
       ctx.strokeRect(x, y, w, h);
-      
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
-      ctx.fillRect(x, y, w, h);
     }
 
     ctx.restore();
+  }, [boundingBox, detectionState.status, isMirrored]);
 
-    // Draw scanning line if processing (overlay on top, not mirrored context)
-    if (processing) {
-       const time = Date.now() / 1000;
-       const y = (Math.sin(time * 4) + 1) / 2 * canvas.height;
-       
-       ctx.beginPath();
-       ctx.moveTo(0, y);
-       ctx.lineTo(canvas.width, y);
-       ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)'; // Indigo
-       ctx.lineWidth = 2;
-       ctx.stroke();
-       
-       // Glow effect
-       ctx.shadowBlur = 10;
-       ctx.shadowColor = 'rgba(99, 102, 241, 1)';
-    } else {
-        ctx.shadowBlur = 0;
-    }
+  const detectionLoop = useCallback(async () => {
+    if (!isMountedRef.current) return;
 
-    animationRef.current = requestAnimationFrame(drawOverlay);
-  }, [boundingBox, detectionState.status, isMirrored, processing]);
+    const now = Date.now();
+    requestRef.current = requestAnimationFrame(detectionLoop);
 
-  useEffect(() => {
-    if (isActive) {
-        animationRef.current = requestAnimationFrame(drawOverlay);
-    }
-    return () => {
-        if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    }
-  }, [isActive, drawOverlay]);
+    // Draw every frame
+    drawOverlay();
 
-  const analyzeLoop = useCallback(async () => {
-    if (!isActive || isPaused || cameraError) {
-        setTimerProgress(0);
-        return;
-    }
+    // Detect every 150ms to save battery but stay fast
+    if (now - lastDetectionTimeRef.current < 150) return;
+    lastDetectionTimeRef.current = now;
 
-    if (!videoRef.current || videoRef.current.readyState !== 4) {
-        timeoutRef.current = window.setTimeout(analyzeLoop, 500);
-        return;
-    }
-
-    if (document.hidden) {
-         timeoutRef.current = window.setTimeout(analyzeLoop, 1000);
-         return;
-    }
-
-    setProcessing(true);
-    setTimerProgress(0); // Reset timer visual
-    setDetectionState(prev => ({ ...prev, status: 'processing' }));
-    setBoundingBox(null); 
-
-    let nextDelay = delayRef.current;
+    if (!isActive || isPaused || cameraError || !videoRef.current) return;
 
     try {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      
-      if (canvas && video) {
-          const context = canvas.getContext('2d', { willReadFrequently: true });
-          if (context) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+       const result = await identifyGesture(videoRef.current);
+       
+       if (!isMountedRef.current) return;
 
-            // Use slightly lower quality for speed
-            const base64Image = canvas.toDataURL('image/jpeg', 0.6);
+       if (result.error === "LOADING") {
+           setDetectionState(prev => ({ ...prev, status: 'loading', label: "تحميل النموذج..." }));
+           return;
+       }
 
-            const result = await identifyGesture(base64Image);
-            
-            if (result.error === "QUOTA_EXCEEDED") {
-                console.warn("API Limit reached, backing off...");
-                setDetectionState({
-                    action: GestureAction.NONE,
-                    label: "⚠️ حد الاستخدام (انتظار)",
-                    status: 'rate_limit'
-                });
-                nextDelay = Math.min(nextDelay * 2, 30000); // Exponential backoff max 30s
-            } else {
-                // Reset delay on success/normal operation
-                nextDelay = 6000;
-                const now = Date.now();
-                const isCoolingDown = now - lastActionTimeRef.current < COOLDOWN_MS;
-                
-                if (result.action !== GestureAction.NONE && !isCoolingDown) {
-                    // Map action to friendly label
-                    let label = "";
-                    switch (result.action) {
-                        case GestureAction.NEXT: label = "التالي (👍)"; break;
-                        case GestureAction.PREV: label = "السابق (👎)"; break;
-                        case GestureAction.PAUSE: label = "توقف (✋)"; break;
-                        case GestureAction.VOL_UP: label = "رفع الصوت (✌️)"; break;
-                        case GestureAction.VOL_DOWN: label = "خفض الصوت (✊)"; break;
-                        case GestureAction.CHANGE_THEME: label = "النمط (☝️)"; break;
-                        case GestureAction.ZOOM_IN: label = "تكبير (👌)"; break;
-                        case GestureAction.ZOOM_OUT: label = "تصغير (🤙)"; break;
-                        case GestureAction.SPACE: label = "مسافة (3 أصابع)"; break;
-                        default: label = "تم التعرف";
-                    }
-                    
-                    setDetectionState({
-                        action: result.action,
-                        label: label,
-                        status: 'success'
-                    });
-                    
-                    if (result.boundingBox) {
-                        setBoundingBox(result.boundingBox);
-                    }
+       if (result.error === "INIT_FAILED") {
+           setDetectionState(prev => ({ ...prev, status: 'error', label: "فشل تحميل AI" }));
+           return;
+       }
 
-                    lastActionTimeRef.current = now;
-                    if (navigator.vibrate) navigator.vibrate(50);
-                    onGestureDetected(result.action);
-                } else {
-                    // No gesture detected
-                    setDetectionState(prev => ({
-                        ...prev,
-                        label: isCoolingDown ? "انتظار..." : "جاهز...",
-                        status: 'waiting',
-                    }));
-                }
-            }
-          }
-      }
-    } catch (error) {
-      console.error("Analysis error:", error);
-      setDetectionState(prev => ({ ...prev, status: 'error', label: 'خطأ' }));
-    } finally {
-      setProcessing(false);
-      delayRef.current = nextDelay;
-      setVisualDelay(nextDelay);
-      
-      // Start visual timer for next cycle
-      // Slight delay to allow UI to settle
-      setTimeout(() => {
-          if(isActive && !isPaused) setTimerProgress(100);
-      }, 100);
-      
-      timeoutRef.current = window.setTimeout(analyzeLoop, nextDelay);
+       // Handle Cooldown for same action to prevent stuttering
+       if (now < actionCooldownRef.current) return;
+
+       if (result.action !== GestureAction.NONE) {
+           const label = result.action.replace('NUM_', '').replace('_', ' ');
+           
+           setDetectionState({
+               action: result.action,
+               label: label,
+               status: 'success'
+           });
+           
+           if (result.boundingBox) setBoundingBox(result.boundingBox);
+           
+           // Trigger action only if different or after cooldown
+           // We add a small debounce
+           if (result.action !== lastActionRef.current || now > actionCooldownRef.current) {
+               if (navigator.vibrate) navigator.vibrate(50);
+               onGestureDetected(result.action);
+               actionCooldownRef.current = now + 1000; // 1 second cooldown between same actions
+               lastActionRef.current = result.action;
+           }
+       } else {
+           setDetectionState(prev => ({
+               ...prev,
+               label: "مستعد",
+               status: 'waiting',
+           }));
+           setBoundingBox(null);
+           // Reset last action if nothing detected for a while, allowing easier re-trigger
+           if (now - actionCooldownRef.current > 500) {
+              lastActionRef.current = GestureAction.NONE;
+           }
+       }
+    } catch (err) {
+        console.error(err);
     }
-  }, [isActive, isPaused, cameraError, onGestureDetected]);
 
-  // Init loop
+  }, [isActive, isPaused, cameraError, drawOverlay, onGestureDetected]);
+
   useEffect(() => {
-      if (isActive && !isPaused && !cameraError) {
-          analyzeLoop();
-      } else {
-          setTimerProgress(0);
+      if (isActive && !isPaused) {
+          requestRef.current = requestAnimationFrame(detectionLoop);
       }
       return () => {
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          if (requestRef.current) cancelAnimationFrame(requestRef.current);
       };
-  }, [isActive, isPaused, cameraError, analyzeLoop]);
+  }, [isActive, isPaused, detectionLoop]);
 
-  // Helper for status color
   const getStatusColor = (state: DetectionState) => {
       if (isPaused) return "bg-amber-600 text-white";
       switch (state.status) {
-          case 'rate_limit': return "bg-red-600 text-white";
           case 'error': return "bg-red-600 text-white";
-          case 'success': 
-             if ([GestureAction.PREV, GestureAction.VOL_DOWN, GestureAction.ZOOM_OUT].includes(state.action)) return "bg-rose-600 text-white";
-             if ([GestureAction.ZOOM_IN, GestureAction.SPACE, GestureAction.CHANGE_THEME].includes(state.action)) return "bg-blue-600 text-white";
-             return "bg-emerald-600 text-white";
-          case 'processing': return "bg-slate-700 text-slate-300";
+          case 'success': return "bg-emerald-600 text-white";
+          case 'loading': return "bg-indigo-600 text-white animate-pulse";
           default: return "bg-slate-700 text-slate-300";
       }
   };
 
   if (cameraError) {
     return (
-      <div className="fixed bottom-4 left-4 z-50 flex flex-col items-center bg-red-900/95 p-4 rounded-xl shadow-2xl border border-red-700 backdrop-blur-sm max-w-[200px]">
+      <div className="fixed bottom-4 left-4 z-50 flex flex-col items-center bg-red-900/95 p-4 rounded-xl shadow-2xl">
         <p className="text-white text-xs text-center mb-2">{cameraError}</p>
-        <button onClick={startCamera} className="px-3 py-1 bg-white text-red-900 text-xs font-bold rounded hover:bg-slate-200 transition">
+        <button onClick={startCamera} className="px-3 py-1 bg-white text-red-900 text-xs font-bold rounded">
           إعادة المحاولة
         </button>
       </div>
@@ -339,7 +252,6 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
 
         <button 
           onClick={toggleMirror}
-          title="عكس اتجاه الكاميرا"
           className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity z-10"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
@@ -352,16 +264,6 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
              <span className="text-3xl">⏸️</span>
           </div>
         )}
-
-        {/* Timer Progress Bar */}
-        {!isPaused && !processing && (
-          <div className="absolute bottom-0 left-0 h-1 bg-emerald-500 z-10 ease-linear" 
-               style={{ 
-                 width: `${timerProgress}%`, 
-                 transitionProperty: 'width',
-                 transitionDuration: `${visualDelay - 150}ms`
-               }} />
-        )}
       </div>
       
       <div className="text-xs text-slate-300 text-center w-full">
@@ -369,8 +271,6 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
           {isPaused ? "متوقف" : detectionState.label}
         </div>
       </div>
-
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 };

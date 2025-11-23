@@ -118,7 +118,7 @@ const App: React.FC = () => {
     switch (action) {
       case GestureAction.NEXT: nextSlide(); break;
       case GestureAction.PREV: prevSlide(); break;
-      case GestureAction.SPACE: nextSlide(); break; // Space = Next
+      case GestureAction.SPACE: nextSlide(); break; 
       case GestureAction.VOL_UP: handleVolume('up'); break;
       case GestureAction.VOL_DOWN: handleVolume('down'); break;
       case GestureAction.CHANGE_THEME: toggleTheme(); break;
@@ -317,22 +317,19 @@ const App: React.FC = () => {
           <p className="text-xl text-slate-200 mb-8 tracking-wide font-light">مُقدم العروض الذكي | Smart Presenter</p>
           
           {/* Gesture Grid */}
-          <div className="grid grid-cols-3 md:grid-cols-9 gap-2 mb-10 text-right">
+          <div className="grid grid-cols-3 md:grid-cols-7 gap-3 mb-10 text-right justify-center">
             {[
               { i: '👍', l: 'التالي' },
               { i: '👎', l: 'السابق' },
               { i: '✋', l: 'توقف' },
               { i: '✌️', l: 'رفع الصوت', c: 'text-emerald-300' },
               { i: '✊', l: 'خفض الصوت', c: 'text-rose-300' },
-              { i: '☝️', l: 'النمط' },
-              { i: '👌', l: 'تكبير', c: 'text-blue-300' },
-              { i: '🤙', l: 'تصغير', c: 'text-blue-300' },
-              { i: '3️⃣', l: 'مسافة', desc: '3 أصابع' },
+              { i: '☝️', l: 'تكبير', c: 'text-blue-300' },
+              { i: '🤟', l: 'تصغير', c: 'text-blue-300' },
             ].map((g, idx) => (
-              <div key={idx} className="bg-black/30 p-2 rounded-xl flex flex-col items-center text-center gap-1 hover:bg-black/40 transition cursor-help group border border-white/5">
-                <span className="text-2xl group-hover:scale-110 transition-transform">{g.i}</span>
-                <p className={`text-[10px] font-bold ${g.c || 'text-slate-200'}`}>{g.l}</p>
-                {g.desc && <p className="text-[8px] text-slate-400">{g.desc}</p>}
+              <div key={idx} className="bg-black/30 p-3 rounded-xl flex flex-col items-center text-center gap-2 hover:bg-black/40 transition cursor-help group border border-white/5">
+                <span className="text-3xl group-hover:scale-110 transition-transform">{g.i}</span>
+                <p className={`text-xs font-bold ${g.c || 'text-slate-200'}`}>{g.l}</p>
               </div>
             ))}
           </div>

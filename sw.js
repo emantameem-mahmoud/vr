@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v2';
+const CACHE_NAME = 'smart-presenter-v12-fix-logs';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -41,21 +41,19 @@ self.addEventListener('fetch', (event) => {
   if (!event.request.url.startsWith(self.location.origin) && 
       !event.request.url.includes('cdn.tailwindcss.com') &&
       !event.request.url.includes('fonts.googleapis.com') &&
+      !event.request.url.includes('cdn.jsdelivr.net') &&
       !event.request.url.includes('gstatic.com')) {
     return;
   }
 
   // Stale-While-Revalidate Strategy
-  // Serve from cache immediately, then update from network in background
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Don't cache bad responses or API calls
         if (
           !networkResponse || 
           networkResponse.status !== 200 || 
-          event.request.method !== 'GET' ||
-          event.request.url.includes('generativelanguage.googleapis.com')
+          event.request.method !== 'GET'
         ) {
           return networkResponse;
         }
@@ -66,10 +64,9 @@ self.addEventListener('fetch', (event) => {
         });
         return networkResponse;
       }).catch(() => {
-        // Network failed, return nothing (or fallback)
+        // Network failed
       });
 
-      // Return cached response if available, otherwise wait for network
       return cachedResponse || fetchPromise;
     })
   );

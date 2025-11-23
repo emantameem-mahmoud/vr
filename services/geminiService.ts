@@ -1,121 +1,112 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
 import { GestureAction, DetectionResult } from "../types";
 
-// NOTE: For production deployment, ensure process.env.API_KEY is set in your hosting environment (Vercel, Netlify, etc).
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let gestureRecognizer: GestureRecognizer | null = null;
+let isInitializing = false;
+let initError = false;
 
-// Confidence threshold
-const CONFIDENCE_THRESHOLD = 0.60;
-
-export const identifyGesture = async (base64Image: string): Promise<DetectionResult> => {
+// Initialize the MediaPipe Gesture Recognizer model
+export const initializeModel = async () => {
+  if (isInitializing || gestureRecognizer || initError) return;
+  isInitializing = true;
   try {
-    // Remove header if present (data:image/jpeg;base64,)
-    const cleanBase64 = base64Image.split(',')[1] || base64Image;
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+    );
+    
+    // Suppress specific INFO logs that users might mistake for errors
+    const originalLog = console.log;
+    const originalInfo = console.info;
+    
+    const filterLog = (args: any[]) => {
+        if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('XNNPACK')) return true;
+        return false;
+    };
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: cleanBase64
-            }
-          },
-          {
-            text: `Analyze the image for a hand gesture controlling a presentation.
-            
-            Return JSON with 'action', 'confidence' and 'boundingBox'.
-            
-            GESTURE DEFINITIONS:
-            - "NEXT": Thumb UP (👍).
-            - "PREV": Thumb DOWN (👎).
-            - "PAUSE": Open Palm facing camera (✋). Stop/Halt gesture.
-            - "VOL_UP": "V" Sign / Peace Sign (✌️). Index and Middle fingers up.
-            - "VOL_DOWN": Fist (✊). Hand closed tight.
-            - "CHANGE_THEME": Index Finger pointing UP (☝️).
-            - "ZOOM_IN": "OK" Sign / Pinch (👌). Index and Thumb tips touching.
-            - "ZOOM_OUT": "Shaka" / "Phone" (🤙). Thumb and Pinky extended, middle 3 fingers curled.
-            - "SPACE": Three Fingers UP (Index, Middle, Ring). Distinct from PAUSE (5 fingers) and V-Sign (2 fingers).
-            
-            - "NONE": No hand, blurry, neutral hand, or unclear gesture.
-            
-            OUTPUT RULES:
-            1. If multiple gestures possible, choose the one with highest clarity.
-            2. 'boundingBox' should cover the hand performing the gesture (ymin, xmin, ymax, xmax normalized 0-1).
-            3. Be strict: "Space" must have 3 fingers, "Pause" must have 5.
-            `
-          }
-        ]
+    console.log = (...args) => { if(!filterLog(args)) originalLog(...args); };
+    console.info = (...args) => { if(!filterLog(args)) originalInfo(...args); };
+
+    gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task",
+        delegate: "GPU"
       },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            action: {
-              type: Type.STRING,
-              enum: [
-                GestureAction.NEXT, 
-                GestureAction.PREV, 
-                GestureAction.PAUSE, 
-                GestureAction.VOL_UP, 
-                GestureAction.VOL_DOWN, 
-                GestureAction.CHANGE_THEME, 
-                GestureAction.ZOOM_IN,
-                GestureAction.ZOOM_OUT,
-                GestureAction.SPACE,
-                GestureAction.NONE
-              ],
-            },
-            confidence: {
-              type: Type.NUMBER,
-            },
-            boundingBox: {
-              type: Type.OBJECT,
-              properties: {
-                ymin: { type: Type.NUMBER },
-                xmin: { type: Type.NUMBER },
-                ymax: { type: Type.NUMBER },
-                xmax: { type: Type.NUMBER }
-              }
-            }
-          },
-          required: ["action", "confidence"]
-        }
-      }
+      runningMode: "VIDEO"
     });
 
-    const text = response.text;
-    if (!text) return { action: GestureAction.NONE, confidence: 0 };
+    // Restore console logs
+    console.log = originalLog;
+    console.info = originalInfo;
 
-    const json = JSON.parse(text);
-    const action = json.action as GestureAction;
-    const confidence = json.confidence || 0;
-    const boundingBox = json.boundingBox;
-
-    if (confidence < CONFIDENCE_THRESHOLD) {
-      return { action: GestureAction.NONE, confidence };
-    }
-
-    return { action, confidence, boundingBox };
-
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    let errorMessage = "API Error";
-    
-    // Robust error checking for 429 / Quota
-    if (
-      error.message?.includes("429") || 
-      error.status === 429 || 
-      error.code === 429 ||
-      (error.error && error.error.code === 429) ||
-      error.message?.includes("quota") ||
-      error.message?.includes("limit")
-    ) {
-      errorMessage = "QUOTA_EXCEEDED";
-    }
-    
-    return { action: GestureAction.NONE, confidence: 0, error: errorMessage };
+    console.log("MediaPipe Model Loaded successfully");
+  } catch (e) {
+    console.error("Failed to load MediaPipe", e);
+    initError = true;
   }
+  isInitializing = false;
+};
+
+// Accept HTMLVideoElement instead of base64
+export const identifyGesture = async (videoSource: HTMLVideoElement): Promise<DetectionResult> => {
+    if (!gestureRecognizer) {
+        if (initError) return { action: GestureAction.NONE, confidence: 0, error: "INIT_FAILED" };
+        
+        await initializeModel();
+        
+        // If model is still loading or failed
+        if (!gestureRecognizer) {
+             return initError 
+                ? { action: GestureAction.NONE, confidence: 0, error: "INIT_FAILED" }
+                : { action: GestureAction.NONE, confidence: 0, error: "LOADING" };
+        }
+    }
+
+    // Ensure video is ready
+    if (videoSource.readyState < 2) return { action: GestureAction.NONE, confidence: 0 };
+
+    try {
+        const results = gestureRecognizer.recognizeForVideo(videoSource, Date.now());
+        
+        if (results.gestures.length > 0 && results.gestures[0].length > 0) {
+            const gesture = results.gestures[0][0];
+            const name = gesture.categoryName;
+            const score = gesture.score;
+
+            // Standard MediaPipe Gesture Mapping
+            // Categories: None, Closed_Fist, Open_Palm, Pointing_Up, Thumb_Down, Thumb_Up, Victory, ILoveYou
+            let action = GestureAction.NONE;
+            switch(name) {
+                case "Thumb_Up": action = GestureAction.NEXT; break;
+                case "Thumb_Down": action = GestureAction.PREV; break;
+                case "Open_Palm": action = GestureAction.PAUSE; break;
+                case "Victory": action = GestureAction.VOL_UP; break; // V sign
+                case "Closed_Fist": action = GestureAction.VOL_DOWN; break;
+                case "Pointing_Up": action = GestureAction.ZOOM_IN; break;
+                case "ILoveYou": action = GestureAction.ZOOM_OUT; break; // 🤟
+                default: action = GestureAction.NONE;
+            }
+            
+            // Only return if confidence is high enough (standard model is usually very confident)
+            if (score < 0.5) return { action: GestureAction.NONE, confidence: score };
+
+            // Bounding Box Calculation from Landmarks
+            let boundingBox = undefined;
+            if (results.landmarks && results.landmarks[0]) {
+                 const xs = results.landmarks[0].map(l => l.x);
+                 const ys = results.landmarks[0].map(l => l.y);
+                 boundingBox = {
+                     xmin: Math.min(...xs),
+                     xmax: Math.max(...xs),
+                     ymin: Math.min(...ys),
+                     ymax: Math.max(...ys)
+                 };
+            }
+
+            return { action, confidence: score, boundingBox };
+        }
+    } catch (err) {
+        console.error("Detection Error:", err);
+    }
+    
+    return { action: GestureAction.NONE, confidence: 0 };
 };
