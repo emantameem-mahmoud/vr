@@ -1,5 +1,5 @@
 import { GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
-import { GestureAction, DetectionResult } from "../types";
+import { HandGesture, DetectionResult } from "../types";
 
 let gestureRecognizer: GestureRecognizer | null = null;
 let isInitializing = false;
@@ -7,7 +7,9 @@ let initError = false;
 
 // Initialize the MediaPipe Gesture Recognizer model
 export const initializeModel = async () => {
-  if (isInitializing || gestureRecognizer || initError) return;
+  if (gestureRecognizer) return; // Already initialized
+  if (isInitializing) return; // Currently loading
+  
   isInitializing = true;
 
   // Suppress specific INFO logs from MediaPipe/TFLite that users might mistake for errors
@@ -15,24 +17,23 @@ export const initializeModel = async () => {
   const originalInfo = console.info;
   const originalWarn = console.warn;
   const originalError = console.error;
-  const originalDebug = console.debug;
   
   const filterLog = (args: any[]) => {
-      const msg = args.map(a => String(a)).join(' ');
-      // Filter out the XNNPACK info message and other TFLite initialization logs
-      if (msg.includes('XNNPACK') || msg.includes('TensorFlow Lite') || msg.includes('delegate for CPU')) return true;
+      try {
+        const msg = args.map(a => String(a)).join(' ');
+        // Filter out the XNNPACK info message and other TFLite initialization logs
+        if (msg.includes('XNNPACK') || msg.includes('TensorFlow Lite') || msg.includes('delegate for CPU')) return true;
+      } catch (e) { return false; }
       return false;
   };
 
   console.log = (...args) => { if(!filterLog(args)) originalLog(...args); };
   console.info = (...args) => { if(!filterLog(args)) originalInfo(...args); };
-  console.warn = (...args) => { if(!filterLog(args)) originalWarn(...args); };
-  console.error = (...args) => { if(!filterLog(args)) originalError(...args); };
-  console.debug = (...args) => { if(!filterLog(args)) originalDebug(...args); };
-
+  
   try {
+    // Use jsdelivr for more stable WASM asset serving than esm.sh for binary files
     const vision = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm"
     );
 
     gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
@@ -43,10 +44,10 @@ export const initializeModel = async () => {
       runningMode: "VIDEO"
     });
 
-    // Use originalLog to ensure this specific success message is printed
     originalLog("MediaPipe Model Loaded successfully");
+    initError = false;
   } catch (e) {
-    originalError("Failed to load MediaPipe", e);
+    originalError("Failed to load MediaPipe:", e);
     initError = true;
   } finally {
     // Restore console logs
@@ -54,7 +55,6 @@ export const initializeModel = async () => {
     console.info = originalInfo;
     console.warn = originalWarn;
     console.error = originalError;
-    console.debug = originalDebug;
     isInitializing = false;
   }
 };
@@ -62,47 +62,42 @@ export const initializeModel = async () => {
 // Accept HTMLVideoElement instead of base64
 export const identifyGesture = async (videoSource: HTMLVideoElement): Promise<DetectionResult> => {
     if (!gestureRecognizer) {
-        if (initError) return { action: GestureAction.NONE, confidence: 0, error: "INIT_FAILED" };
-        
-        await initializeModel();
-        
-        // If model is still loading or failed
-        if (!gestureRecognizer) {
-             return initError 
-                ? { action: GestureAction.NONE, confidence: 0, error: "INIT_FAILED" }
-                : { action: GestureAction.NONE, confidence: 0, error: "LOADING" };
+        if (!isInitializing && !initError) {
+             initializeModel().catch(console.error);
         }
+        return { gesture: HandGesture.NONE, confidence: 0, error: initError ? "INIT_FAILED" : "LOADING" };
     }
 
-    // Ensure video is ready
-    if (videoSource.readyState < 2) return { action: GestureAction.NONE, confidence: 0 };
+    // Ensure video is ready and has dimensions
+    if (videoSource.readyState < 2 || videoSource.videoWidth === 0 || videoSource.videoHeight === 0) {
+        return { gesture: HandGesture.NONE, confidence: 0 };
+    }
 
     try {
         const results = gestureRecognizer.recognizeForVideo(videoSource, Date.now());
         
         if (results.gestures.length > 0 && results.gestures[0].length > 0) {
-            const gesture = results.gestures[0][0];
-            const name = gesture.categoryName;
-            const score = gesture.score;
+            const gestureObj = results.gestures[0][0];
+            const name = gestureObj.categoryName;
+            const score = gestureObj.score;
 
-            // Standard MediaPipe Gesture Mapping
-            // Categories: None, Closed_Fist, Open_Palm, Pointing_Up, Thumb_Down, Thumb_Up, Victory, ILoveYou
-            let action = GestureAction.NONE;
+            // Map string name to Enum
+            let gesture = HandGesture.NONE;
             switch(name) {
-                case "Thumb_Up": action = GestureAction.NEXT; break;
-                case "Thumb_Down": action = GestureAction.PREV; break;
-                case "Open_Palm": action = GestureAction.PAUSE; break;
-                case "Victory": action = GestureAction.VOL_UP; break; // V sign
-                case "Closed_Fist": action = GestureAction.VOL_DOWN; break;
-                case "Pointing_Up": action = GestureAction.ZOOM_IN; break;
-                case "ILoveYou": action = GestureAction.ZOOM_OUT; break; // 🤟
-                default: action = GestureAction.NONE;
+                case "Thumb_Up": gesture = HandGesture.THUMB_UP; break;
+                case "Thumb_Down": gesture = HandGesture.THUMB_DOWN; break;
+                case "Open_Palm": gesture = HandGesture.OPEN_PALM; break;
+                case "Victory": gesture = HandGesture.VICTORY; break; 
+                case "Closed_Fist": gesture = HandGesture.CLOSED_FIST; break;
+                case "Pointing_Up": gesture = HandGesture.POINTING_UP; break;
+                case "ILoveYou": gesture = HandGesture.I_LOVE_YOU; break; 
+                default: gesture = HandGesture.NONE;
             }
             
-            // Only return if confidence is high enough (standard model is usually very confident)
-            if (score < 0.5) return { action: GestureAction.NONE, confidence: score };
+            // Only return if confidence is high enough
+            if (score < 0.5) return { gesture: HandGesture.NONE, confidence: score };
 
-            // Bounding Box Calculation from Landmarks
+            // Bounding Box Calculation
             let boundingBox = undefined;
             if (results.landmarks && results.landmarks[0]) {
                  const xs = results.landmarks[0].map(l => l.x);
@@ -115,12 +110,11 @@ export const identifyGesture = async (videoSource: HTMLVideoElement): Promise<De
                  };
             }
 
-            return { action, confidence: score, boundingBox };
+            return { gesture, confidence: score, boundingBox };
         }
     } catch (err) {
-        // Suppress benign runtime errors if needed, but usually we want to see real errors
-        console.error("Detection Error:", err);
+        console.error("Detection Error (Recoverable):", err);
     }
     
-    return { action: GestureAction.NONE, confidence: 0 };
+    return { gesture: HandGesture.NONE, confidence: 0 };
 };

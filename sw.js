@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v24-app-icon-fix';
+const CACHE_NAME = 'smart-presenter-v38-fix';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,7 +10,7 @@ const ASSETS_TO_CACHE = [
 
 // Install Event: Cache assets
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force activation
+  self.skipWaiting(); // Force activation immediately
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -18,11 +18,11 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event: Clean old caches
+// Activate Event: Clean old caches aggressively
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // Take control correctly
+      self.clients.claim(), // Take control of all clients immediately
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
@@ -37,12 +37,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Stale-While-Revalidate
+// Fetch Event: Stale-While-Revalidate with network fallback
 self.addEventListener('fetch', (event) => {
   // Only handle http/https requests
   if (!event.request.url.startsWith('http')) return;
 
-  // Skip cross-origin requests unless they are critical CDNs we use
   const url = new URL(event.request.url);
   
   // Allow caching of local assets and specific CDNs
@@ -51,6 +50,7 @@ self.addEventListener('fetch', (event) => {
       url.hostname.includes('tailwindcss.com') ||
       url.hostname.includes('fonts.googleapis.com') ||
       url.hostname.includes('jsdelivr.net') ||
+      url.hostname.includes('esm.sh') ||
       url.hostname.includes('gstatic.com');
 
   if (!isLocal && !isAllowedCDN) {
@@ -59,14 +59,12 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Network fetch to update cache in background
+      // If found in cache, return it, but also update it in background (revalidate)
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Check if we received a valid response
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
+        if (!networkResponse || networkResponse.status !== 200 || (networkResponse.type !== 'basic' && networkResponse.type !== 'cors')) {
           return networkResponse;
         }
 
-        // Clone and cache
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
@@ -74,10 +72,9 @@ self.addEventListener('fetch', (event) => {
 
         return networkResponse;
       }).catch(() => {
-        // Network failure, just return nothing (cached response handles it)
+        // Network failure - nothing to do, we rely on cache
       });
 
-      // Return cached response immediately if available, else wait for network
       return cachedResponse || fetchPromise;
     })
   );

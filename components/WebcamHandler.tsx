@@ -1,36 +1,45 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { identifyGesture } from '../services/geminiService';
-import { GestureAction, BoundingBox } from '../types';
+import { GestureAction, BoundingBox, HandGesture } from '../types';
 
 interface WebcamHandlerProps {
   onGestureDetected: (action: GestureAction) => void;
   isActive: boolean;
   isPaused?: boolean;
+  gestureMappings: Record<HandGesture, GestureAction>;
 }
 
 interface DetectionState {
+  gesture: HandGesture;
   action: GestureAction;
   label: string;
   status: 'waiting' | 'success' | 'error' | 'loading';
 }
 
-const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActive, isPaused = false }) => {
+const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActive, isPaused = false, gestureMappings }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const isMountedRef = useRef<boolean>(true); 
   const requestRef = useRef<number | null>(null);
   const lastDetectionTimeRef = useRef<number>(0);
-  const lastActionRef = useRef<GestureAction>(GestureAction.NONE);
+  const lastGestureRef = useRef<HandGesture>(HandGesture.NONE);
   const actionCooldownRef = useRef<number>(0);
   
   const [detectionState, setDetectionState] = useState<DetectionState>({
+    gesture: HandGesture.NONE,
     action: GestureAction.NONE,
     label: "تحميل...",
     status: 'loading'
   });
   const [boundingBox, setBoundingBox] = useState<BoundingBox | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isMirrored, setIsMirrored] = useState(() => localStorage.getItem('webcam_mirror') !== 'false');
+  
+  const [isMirrored, setIsMirrored] = useState(() => {
+    try {
+      return localStorage.getItem('webcam_mirror') !== 'false';
+    } catch(e) { return true; }
+  });
+  
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
@@ -44,13 +53,23 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
+      // Cleanup previous stream first
       if (videoRef.current && videoRef.current.srcObject) {
          (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+         videoRef.current.srcObject = null;
       }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user', frameRate: { ideal: 30 } } 
       });
-      if (videoRef.current && isMountedRef.current) {
+
+      if (!isMountedRef.current || !isActive) {
+        // Stopped before we finished starting
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => { if(isMountedRef.current) videoRef.current?.play().catch(console.error); };
       }
@@ -58,7 +77,7 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
       console.error("Camera Error:", err);
       if (isMountedRef.current) setCameraError("الكاميرا مغلقة");
     }
-  }, []);
+  }, [isActive]);
 
   useEffect(() => {
     if (isActive) startCamera();
@@ -70,7 +89,12 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
 
   const toggleMirror = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsMirrored(p => { localStorage.setItem('webcam_mirror', String(!p)); return !p; });
+    setIsMirrored(p => { 
+      try {
+        localStorage.setItem('webcam_mirror', String(!p));
+      } catch(e) {}
+      return !p; 
+    });
   };
 
   const drawOverlay = useCallback(() => {
@@ -113,24 +137,34 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
 
        if (now < actionCooldownRef.current) return;
 
-       if (result.action !== GestureAction.NONE) {
-           const label = result.action.replace('NUM_', '').replace('_', ' ');
-           setDetectionState({ action: result.action, label, status: 'success' });
-           if (result.boundingBox) setBoundingBox(result.boundingBox);
+       if (result.gesture !== HandGesture.NONE) {
+           // Look up action in mappings
+           const mappedAction = gestureMappings[result.gesture] || GestureAction.NONE;
+           const gestureName = result.gesture.replace('_', ' ');
            
-           if (result.action !== lastActionRef.current || now > actionCooldownRef.current) {
-               if (navigator.vibrate) navigator.vibrate(50);
-               onGestureDetected(result.action);
-               actionCooldownRef.current = now + 1000;
-               lastActionRef.current = result.action;
+           if (mappedAction !== GestureAction.NONE) {
+             setDetectionState({ gesture: result.gesture, action: mappedAction, label: mappedAction, status: 'success' });
+             if (result.boundingBox) setBoundingBox(result.boundingBox);
+             
+             // Trigger action if gesture changed or cooldown passed
+             if (result.gesture !== lastGestureRef.current || now > actionCooldownRef.current) {
+                 if (navigator.vibrate) navigator.vibrate(50);
+                 onGestureDetected(mappedAction);
+                 actionCooldownRef.current = now + 1000;
+                 lastGestureRef.current = result.gesture;
+             }
+           } else {
+             // Gesture detected but mapped to NONE
+             setDetectionState(p => ({ ...p, label: gestureName, status: 'waiting' }));
+             setBoundingBox(null);
            }
        } else {
            setDetectionState(p => ({ ...p, label: "جاهز", status: 'waiting' }));
            setBoundingBox(null);
-           if (now - actionCooldownRef.current > 500) lastActionRef.current = GestureAction.NONE;
+           if (now - actionCooldownRef.current > 500) lastGestureRef.current = HandGesture.NONE;
        }
     } catch (err) { console.error(err); }
-  }, [isActive, isPaused, cameraError, drawOverlay, onGestureDetected]);
+  }, [isActive, isPaused, cameraError, drawOverlay, onGestureDetected, gestureMappings]);
 
   useEffect(() => {
       if (isActive && !isPaused) requestRef.current = requestAnimationFrame(detectionLoop);
@@ -145,13 +179,9 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
     );
   }
 
-  // Determine container classes based on minimized state
-  // On mobile, default to smaller, on desktop larger. 
-  // Clicking toggles specific dimensions.
-  
   return (
     <div 
-      className={`fixed bottom-4 left-4 z-50 transition-all duration-300 ease-in-out ${isMinimized ? 'w-12 h-12' : 'w-32 sm:w-48'}`}
+      className={`fixed bottom-4 left-4 z-50 transition-all duration-300 ease-in-out ${isMinimized ? 'w-12 h-12' : 'w-28 sm:w-48'}`}
     >
       <div 
         className={`relative bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-600 cursor-pointer group transition-all duration-300 ${isMinimized ? 'h-12 w-12 rounded-full border-2 border-indigo-500' : 'aspect-video'}`}
@@ -167,12 +197,10 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
         />
         <canvas ref={overlayCanvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-        {/* Minimized Icon Overlay */}
         {isMinimized && (
            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-lg">📷</div>
         )}
 
-        {/* Controls (Only when not minimized) */}
         {!isMinimized && (
             <>
                 <button 

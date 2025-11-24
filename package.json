@@ -11,8 +11,8 @@
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "jszip": "latest",
-    "@mediapipe/tasks-vision": "0.10.3"
+    "jszip": "3.10.1",
+    "@mediapipe/tasks-vision": "0.10.9"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

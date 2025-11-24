@@ -11,6 +11,17 @@ export enum GestureAction {
   NONE = 'NONE',
 }
 
+export enum HandGesture {
+  THUMB_UP = 'Thumb_Up',
+  THUMB_DOWN = 'Thumb_Down',
+  OPEN_PALM = 'Open_Palm',
+  VICTORY = 'Victory',
+  CLOSED_FIST = 'Closed_Fist',
+  POINTING_UP = 'Pointing_Up',
+  I_LOVE_YOU = 'ILoveYou',
+  NONE = 'None'
+}
+
 export interface Slide {
   id: number;
   title: string;
@@ -29,7 +40,7 @@ export interface BoundingBox {
 }
 
 export interface DetectionResult {
-  action: GestureAction;
+  gesture: HandGesture;
   confidence: number;
   boundingBox?: BoundingBox;
   error?: string;
