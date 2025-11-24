@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isCursorHidden, setIsCursorHidden] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
 
   // Initialize dark mode carefully to avoid flash
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -37,6 +38,16 @@ const App: React.FC = () => {
   const cursorTimeoutRef = useRef<number | null>(null);
 
   // --- Effects ---
+
+  // Check Orientation
+  useEffect(() => {
+    const checkOrientation = () => {
+       setIsPortrait(window.innerHeight > window.innerWidth);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    return () => window.removeEventListener('resize', checkOrientation);
+  }, []);
 
   // Apply Theme
   useEffect(() => {
@@ -282,6 +293,17 @@ const App: React.FC = () => {
   // --- Classes ---
   const hiddenInFullscreen = `transition-opacity duration-500 ${isFullScreenMode ? 'opacity-0 pointer-events-none hover:opacity-100' : 'opacity-100'}`;
   const cursorClass = isCursorHidden ? 'cursor-hidden' : '';
+
+  // --- View: Portrait Warning ---
+  if (isPortrait) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="text-6xl mb-6 animate-pulse">📲</div>
+        <h1 className="text-2xl font-bold mb-4">يرجى تدوير الجهاز</h1>
+        <p className="text-slate-400">للحصول على أفضل تجربة عرض، يرجى تدوير هاتفك للوضع الأفقي.</p>
+      </div>
+    );
+  }
 
   // --- View: Intro ---
   if (showIntro) {
