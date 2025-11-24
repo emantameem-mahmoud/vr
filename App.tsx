@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 // @ts-ignore
-import JSZip from 'jszip';
+import * as JSZipModule from 'jszip';
 import WebcamHandler from './components/WebcamHandler';
 import SlideView from './components/SlideView';
 import { DEMO_SLIDES } from './constants';
@@ -257,9 +257,10 @@ const App: React.FC = () => {
       const isPPT = file.name.toLowerCase().endsWith('.pptx');
 
       if (isPPT) {
-        // Fix for JSZip default export issue on some ESM environments
-        const ZipConstructor = (JSZip as any).default || JSZip;
-        const zip = new ZipConstructor();
+        // Safe JSZip initialization for various ESM environments
+        // Handle both default export and named export namespace
+        const JSZip = (JSZipModule as any).default ?? JSZipModule;
+        const zip = new JSZip();
         const content = await zip.loadAsync(file);
         
         // Find slides and sort them
@@ -301,9 +302,6 @@ const App: React.FC = () => {
                        if (!target.startsWith("ppt/")) target = "ppt/slides/" + target; // Relative to slide folder if not relative to root
                        target = target.replace("ppt/slides/ppt/media", "ppt/media"); // Fix common path issue
                        target = target.replace("//", "/");
-                       
-                       // Resolve path relative to the slide if needed
-                       // The standard structure usually puts images in ppt/media
                        
                        // Try to find exact file match in zip
                        let zipPath = target;
@@ -568,8 +566,8 @@ const App: React.FC = () => {
       </div>
 
       {/* --- Main Content --- */}
-      {/* Added pb-20 to ensure content isn't hidden behind the new footer when not in fullscreen */}
-      <div className="relative w-full h-full pb-20 sm:pb-0">
+      {/* Added pb-32 to ensure content isn't hidden behind the footer and controls on mobile */}
+      <div className="relative w-full h-full pb-32 sm:pb-0">
         {slides.map((slide, index) => (
           <SlideView 
             key={slide.id} 
@@ -688,8 +686,6 @@ const App: React.FC = () => {
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
              </button>
           </div>
-
-          {/* Center Info removed in favor of new footer below */}
 
           {/* Right Side: Next Button */}
           <div className="pointer-events-auto flex gap-4 items-end">

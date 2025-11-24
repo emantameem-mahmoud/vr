@@ -62,7 +62,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
         {/* Content Layer (Text + Multiple Images) */}
         {(!isImageSlide || hasMultipleImages) && (
           <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar">
-            <div className="min-h-full flex flex-col items-center justify-center p-4 pt-16 pb-32 sm:p-12 sm:pt-24 sm:pb-36 text-center">
+            <div className="min-h-full flex flex-col items-center justify-center p-4 pt-16 pb-40 sm:p-12 sm:pt-24 sm:pb-36 text-center">
               
               <div className="max-w-6xl w-full">
                 {/* Slide Header */}
@@ -71,14 +71,14 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
                 </h2>
                 
                 {slide.title && (
-                    <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-8 leading-tight drop-shadow-sm dark:drop-shadow-lg transition-colors duration-300">
+                    <h1 className="text-xl sm:text-3xl md:text-6xl lg:text-7xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-8 leading-tight drop-shadow-sm dark:drop-shadow-lg transition-colors duration-300">
                     {slide.title}
                     </h1>
                 )}
 
                 {/* Body Text */}
                 {slide.content && (
-                  <p className="text-base sm:text-xl md:text-2xl text-slate-700 dark:text-slate-300 mb-6 sm:mb-10 leading-relaxed max-w-3xl mx-auto transition-colors duration-300 whitespace-pre-wrap">
+                  <p className="text-sm sm:text-lg md:text-2xl text-slate-700 dark:text-slate-300 mb-6 sm:mb-10 leading-relaxed max-w-3xl mx-auto transition-colors duration-300 whitespace-pre-wrap">
                     {slide.content}
                   </p>
                 )}
