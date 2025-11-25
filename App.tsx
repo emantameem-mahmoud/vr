@@ -258,7 +258,7 @@ const App: React.FC = () => {
 
       if (isPPT) {
         // Safe JSZip initialization for various ESM environments
-        // Handle both default export and named export namespace
+        // @ts-ignore
         const JSZip = (JSZipModule as any).default ?? JSZipModule;
         const zip = new JSZip();
         const content = await zip.loadAsync(file);
@@ -453,7 +453,7 @@ const App: React.FC = () => {
         <div className="absolute top-4 right-4 z-20 flex gap-3">
            {installPrompt && (
               <button onClick={handleInstallClick} className="px-3 py-1.5 bg-emerald-600 rounded-full text-sm font-bold shadow-lg flex items-center gap-2 animate-pulse">
-                <span>⬇️</span> تثبيت
+                <span>📲</span> تثبيت التطبيق
               </button>
            )}
           <button onClick={toggleTheme} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
@@ -566,8 +566,7 @@ const App: React.FC = () => {
       </div>
 
       {/* --- Main Content --- */}
-      {/* Added pb-32 to ensure content isn't hidden behind the footer and controls on mobile */}
-      <div className="relative w-full h-full pb-32 sm:pb-0">
+      <div className="relative w-full h-full">
         {slides.map((slide, index) => (
           <SlideView 
             key={slide.id} 
