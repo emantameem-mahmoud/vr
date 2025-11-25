@@ -41,10 +41,11 @@ const GESTURE_LABELS: Record<HandGesture, string> = {
   [HandGesture.NONE]: 'لا شيء',
 };
 
-// Stylized S Icon for Share (Matches App Icon)
-const ShareIconS = () => (
+// Stylized W Icon for Share (Matches App Icon)
+const ShareIconW = () => (
   <svg className="w-5 h-5" viewBox="0 0 512 512" fill="currentColor">
-     <path d="M400 112c0-26.5-21.5-48-48-48H160c-26.5 0-48 21.5-48 48v64c0 26.5 21.5 48 48 48h112v64H112v-48H64v48c0 26.5 21.5 48 48 48h192c26.5 0 48-21.5 48-48v-64c0-26.5-21.5-48-48-48H192v-64h160v48h48v-48z"/>
+     <rect width="512" height="512" rx="100" fill="currentColor" fillOpacity="0.2"/>
+     <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold" fontSize="300" fill="currentColor">W</text>
   </svg>
 );
 
@@ -288,7 +289,10 @@ const App: React.FC = () => {
       const isPPT = file.name.toLowerCase().endsWith('.pptx');
 
       if (isPPT) {
-        const zip = new JSZip();
+        // Robust JSZip Instantiation
+        const JSZipConstructor = (JSZip as any).default || JSZip;
+        const zip = new JSZipConstructor();
+        
         const content = await zip.loadAsync(file);
         
         // Find slides and sort them
@@ -486,7 +490,7 @@ const App: React.FC = () => {
            )}
            
            <button onClick={handleShare} title="مشاركة التطبيق" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition text-white">
-              <ShareIconS />
+              <ShareIconW />
            </button>
 
           <button onClick={toggleTheme} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
@@ -587,7 +591,7 @@ const App: React.FC = () => {
              title="مشاركة التطبيق"
              className={`p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} text-slate-700 dark:text-slate-200`}
            >
-              <ShareIconS />
+              <ShareIconW />
            </button>
         </div>
 
