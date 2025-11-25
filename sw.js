@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v43-fix-404';
+const CACHE_NAME = 'smart-presenter-v45-fix-icon-and-home';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

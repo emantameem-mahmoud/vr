@@ -41,11 +41,10 @@ const GESTURE_LABELS: Record<HandGesture, string> = {
   [HandGesture.NONE]: 'لا شيء',
 };
 
-// Stylized W Icon for Share (Abstract W shape)
-const ShareIconW = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-     <path d="M4.5 4l2.5 16 3.5-11 3.5 11 2.5-16H14l-1.5 11L9.5 7h-1L5.5 18 4 4h-2z" stroke="currentColor" strokeWidth="0.5" />
-     <path d="M7 4h2l2 8 2-8h2l-3.5 14h-1L7 4z" fillOpacity="0.5"/>
+// Stylized S Icon for Share (Matches App Icon)
+const ShareIconS = () => (
+  <svg className="w-5 h-5" viewBox="0 0 512 512" fill="currentColor">
+     <path d="M400 112c0-26.5-21.5-48-48-48H160c-26.5 0-48 21.5-48 48v64c0 26.5 21.5 48 48 48h112v64H112v-48H64v48c0 26.5 21.5 48 48 48h192c26.5 0 48-21.5 48-48v-64c0-26.5-21.5-48-48-48H192v-64h160v48h48v-48z"/>
   </svg>
 );
 
@@ -487,7 +486,7 @@ const App: React.FC = () => {
            )}
            
            <button onClick={handleShare} title="مشاركة التطبيق" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition text-white">
-              <ShareIconW />
+              <ShareIconS />
            </button>
 
           <button onClick={toggleTheme} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
@@ -560,10 +559,11 @@ const App: React.FC = () => {
         <div className="flex gap-2 pointer-events-auto">
           <button 
             onClick={handleGoHome}
-            title="خروج"
+            title="الرئيسية"
             className={`p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass}`}
           >
-            <svg className="w-5 h-5 text-slate-700 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            {/* Home Icon */}
+            <svg className="w-5 h-5 text-slate-700 dark:text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           </button>
           
           <button 
@@ -587,7 +587,7 @@ const App: React.FC = () => {
              title="مشاركة التطبيق"
              className={`p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} text-slate-700 dark:text-slate-200`}
            >
-              <ShareIconW />
+              <ShareIconS />
            </button>
         </div>
 
