@@ -16,9 +16,9 @@
     
     <title>Smart Presenter | مُقدم العروض الذكي</title>
     
-    <!-- Icons (S Shape) - Robust SVG Data URI -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzQzMzhjYSIgcng9IjEyOCIvPjxwYXRoIGQ9Ik0xNjAgMTI4YzAtMTcuNyAxNC4zLTMyIDMyLTMyaDEyOGMxNy43IDAgMzIgMTQuMyAzMiAzMnMtMTQuMyAzMi0zMiAzMmgtOTZ2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJoOTZjNTMgMCA5NiA0MyA5NiA5NnMtNDMgOTYtOTYgOTZIMTI4Yy0xNy43IDAtMzItMTQuMy0zMi0zMnMxNC4zLTMyIDMyLTMyaDE2MHYtNjRjMC0xNy43LTE0LjMtMzItMzItMzJ2LTY0SDE5MmMtMTcuNyAwLTMyLTE0LjMtMzItMzJ6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==">
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzQzMzhjYSIgcng9IjEyOCIvPjxwYXRoIGQ9Ik0xNjAgMTI4YzAtMTcuNyAxNC4zLTMyIDMyLTMyaDEyOGMxNy43IDAgMzIgMTQuMyAzMiAzMnMtMTQuMyAzMi0zMiAzMmgtOTZ2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJoOTZjNTMgMCA5NiA0MyA5NiA5NnMtNDMgOTYtOTYgOTZIMTI4Yy0xNy43IDAtMzItMTQuMy0zMi0zMnMxNC4zLTMyIDMyLTMyaDE2MHYtNjRjMC0xNy43LTE0LjMtMzItMzItMzJ2LTY0SDE5MmMtMTcuNyAwLTMyLTE0LjMtMzItMzJ6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==">
+    <!-- Robust SVG Icon (Letter S) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%234338ca' rx='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='300' fill='white'%3ES%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%234338ca' rx='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='300' fill='white'%3ES%3C/text%3E%3C/svg%3E">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -78,6 +78,7 @@
         height: 100%;
         overflow: hidden; /* Prevent body scroll, handle in app */
         touch-action: none; /* Prevent browser gestures interfering */
+        overscroll-behavior: none;
       }
 
       /* Prevent text selection in presentation mode globally */
@@ -139,7 +140,6 @@
               const newWorker = registration.installing;
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Clean reload for updates
                   console.log('New content is available; please refresh.');
                 }
               });

@@ -62,12 +62,12 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
         {/* Content Layer (Text + Multiple Images) */}
         {(!isImageSlide || hasMultipleImages) && (
           <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar">
-            {/* Adjusted padding for mobile responsiveness: increased bottom padding to clear controls */}
-            <div className="min-h-full flex flex-col items-center justify-center p-4 pt-16 pb-32 sm:p-12 sm:pt-24 sm:pb-36 text-center">
+            {/* Adjusted padding for mobile responsiveness: increased bottom padding to clear controls, reduce top padding on mobile */}
+            <div className="min-h-full flex flex-col items-center justify-center p-4 pt-20 pb-24 sm:p-12 sm:pt-24 sm:pb-36 text-center">
               
               <div className="max-w-6xl w-full">
                 {/* Slide Header */}
-                <h2 className="text-[10px] sm:text-sm md:text-lg font-semibold text-primary dark:text-secondary tracking-widest uppercase mb-2 sm:mb-4 opacity-80">
+                <h2 className="text-[10px] sm:text-xs md:text-sm font-semibold text-primary dark:text-secondary tracking-widest uppercase mb-1 sm:mb-4 opacity-80">
                    الشريحة {slide.id}
                 </h2>
                 
@@ -79,7 +79,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
 
                 {/* Body Text */}
                 {slide.content && (
-                  <p className="text-sm sm:text-lg md:text-2xl text-slate-700 dark:text-slate-300 mb-4 sm:mb-10 leading-relaxed max-w-3xl mx-auto transition-colors duration-300 whitespace-pre-wrap">
+                  <p className="text-sm sm:text-base md:text-2xl text-slate-700 dark:text-slate-300 mb-4 sm:mb-10 leading-relaxed max-w-3xl mx-auto transition-colors duration-300 whitespace-pre-wrap">
                     {slide.content}
                   </p>
                 )}
@@ -93,7 +93,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
                         className="bg-white/60 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 p-2 sm:p-4 rounded-xl backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-700/80 transition duration-300 shadow-sm flex items-center sm:block gap-3"
                       >
                         <div className="w-2 h-2 sm:w-3 sm:h-3 bg-primary rounded-full shrink-0 sm:mx-auto sm:mb-3"></div>
-                        <p className="text-xs sm:text-lg font-medium text-slate-800 dark:text-slate-100 leading-snug">{point}</p>
+                        <p className="text-xs sm:text-sm md:text-lg font-medium text-slate-800 dark:text-slate-100 leading-snug">{point}</p>
                       </div>
                     ))}
                   </div>
@@ -111,7 +111,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
                         <img 
                             src={img} 
                             alt={`Content ${idx}`} 
-                            className="w-full h-auto object-contain max-h-[300px] sm:max-h-[500px]" 
+                            className="w-full h-auto object-contain max-h-[250px] sm:max-h-[500px]" 
                         />
                       </div>
                     ))}

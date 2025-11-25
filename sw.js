@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v41-fix';
+const CACHE_NAME = 'smart-presenter-v42-mobile-fix';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -27,7 +27,6 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -45,19 +44,20 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
   // 1. Navigation Fallback (SPA Pattern): Fixes 404 on launch
+  // When a user navigates to the app root or any sub-route, serve index.html
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          // Try network first for navigation to get fresh content
+          // Try network first
           const networkResponse = await fetch(event.request);
           return networkResponse;
         } catch (error) {
-          // If network fails (offline or 404), return the cached index.html
-          // Use a robust strategy to find the index
+          // If network fails, return cached index.html
           const cache = await caches.open(CACHE_NAME);
+          // Try variations of index path
           const cachedIndex = await cache.match('./index.html');
-          return cachedIndex || await cache.match('./') || await cache.match('index.html');
+          return cachedIndex || await cache.match('index.html') || await cache.match('./');
         }
       })()
     );

@@ -41,12 +41,11 @@ const GESTURE_LABELS: Record<HandGesture, string> = {
   [HandGesture.NONE]: 'لا شيء',
 };
 
-// Stylized W Icon for Share
+// Stylized W Icon for Share (Vercel-ish / Abstract W)
 const ShareIconW = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-     <path d="M4.5 3.75a.75.75 0 0 0-1.28.6l2.5 16a.75.75 0 0 0 1.48.02L9.6 11.5l2.4 8.87a.75.75 0 0 0 1.48-.02l2.5-16a.75.75 0 0 0-1.48-.22L12 16.5 9.48 7.22a.75.75 0 0 0-1.46.03L5.5 16.5 2.98 4.35a.75.75 0 0 0-1.48.22l3 16a.75.75 0 0 0 1.48 0l3-11.5 3 11.5a.75.75 0 0 0 1.48 0l3-16a.75.75 0 0 0-1.48-.22L12 11.5 9.48 2.22a.75.75 0 0 0-1.46 0L5.5 11.5 4.5 3.75Z" />
-     <path d="M2.25 3h19.5v18H2.25z" fill="none"/> {/* Bounding box check */}
-     <path d="M7 21L2 3h4l2.5 12L11 3h2l2.5 12L18 3h4l-5 18h-4L11 9l-2 12H7z" />
+     <path d="M4 4l3 16 3-10 3 10 3-16H14L13 14 10 4H8l-3 10L4 4z" stroke="currentColor" strokeWidth="1" />
+     <path d="M12.06 8.5L9.69 16.32 7.03 4.5h2.38l1.32 7.7 2.37-7.7h1.9l2.37 7.7 1.32-7.7h2.38l-2.66 11.82L15.8 8.5h-3.74z" />
   </svg>
 );
 

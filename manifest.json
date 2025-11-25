@@ -10,13 +10,13 @@
   "scope": "./",
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzQzMzhjYSIgcng9IjEyOCIvPjxwYXRoIGQ9Ik0xNjAgMTI4YzAtMTcuNyAxNC4zLTMyIDMyLTMyaDEyOGMxNy43IDAgMzIgMTQuMyAzMiAzMnMtMTQuMyAzMi0zMiAzMmgtOTZ2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJoOTZjNTMgMCA5NiA0MyA5NiA5NnMtNDMgOTYtOTYgOTZIMTI4Yy0xNy43IDAtMzItMTQuMy0zMi0zMnMxNC4zLTMyIDMyLTMyaDE2MHYtNjRjMC0xNy43LTE0LjMtMzItMzItMzJ2LTY0SDE5MmMtMTcuNyAwLTMyLTE0LjMtMzItMzJ6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==",
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%234338ca' rx='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='300' fill='white'%3ES%3C/text%3E%3C/svg%3E",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzQzMzhjYSIgcng9IjEyOCIvPjxwYXRoIGQ9Ik0xNjAgMTI4YzAtMTcuNyAxNC4zLTMyIDMyLTMyaDEyOGMxNy43IDAgMzIgMTQuMyAzMiAzMnMtMTQuMyAzMi0zMiAzMmgtOTZ2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJoOTZjNTMgMCA5NiA0MyA5NiA5NnMtNDMgOTYtOTYgOTZIMTI4Yy0xNy43IDAtMzItMTQuMy0zMi0zMnMxNC4zLTMyIDMyLTMyaDE2MHYtNjRjMC0xNy43LTE0LjMtMzItMzItMzJ2LTY0SDE5MmMtMTcuNyAwLTMyLTE0LjMtMzItMzJ6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==",
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%234338ca' rx='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='300' fill='white'%3ES%3C/text%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
