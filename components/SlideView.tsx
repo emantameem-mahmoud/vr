@@ -62,37 +62,38 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
         {/* Content Layer (Text + Multiple Images) */}
         {(!isImageSlide || hasMultipleImages) && (
           <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar">
+            {/* Adjusted padding for mobile responsiveness: increased bottom padding to clear controls */}
             <div className="min-h-full flex flex-col items-center justify-center p-4 pt-16 pb-32 sm:p-12 sm:pt-24 sm:pb-36 text-center">
               
               <div className="max-w-6xl w-full">
                 {/* Slide Header */}
-                <h2 className="text-xs sm:text-sm md:text-lg font-semibold text-primary dark:text-secondary tracking-widest uppercase mb-2 sm:mb-4 opacity-80">
+                <h2 className="text-[10px] sm:text-sm md:text-lg font-semibold text-primary dark:text-secondary tracking-widest uppercase mb-2 sm:mb-4 opacity-80">
                    الشريحة {slide.id}
                 </h2>
                 
                 {slide.title && (
-                    <h1 className="text-lg sm:text-3xl md:text-6xl lg:text-7xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-8 leading-tight drop-shadow-sm dark:drop-shadow-lg transition-colors duration-300">
+                    <h1 className="text-xl sm:text-3xl md:text-5xl lg:text-7xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-8 leading-tight drop-shadow-sm dark:drop-shadow-lg transition-colors duration-300">
                     {slide.title}
                     </h1>
                 )}
 
                 {/* Body Text */}
                 {slide.content && (
-                  <p className="text-sm sm:text-lg md:text-2xl text-slate-700 dark:text-slate-300 mb-6 sm:mb-10 leading-relaxed max-w-3xl mx-auto transition-colors duration-300 whitespace-pre-wrap">
+                  <p className="text-sm sm:text-lg md:text-2xl text-slate-700 dark:text-slate-300 mb-4 sm:mb-10 leading-relaxed max-w-3xl mx-auto transition-colors duration-300 whitespace-pre-wrap">
                     {slide.content}
                   </p>
                 )}
 
                 {/* Bullet Points */}
                 {slide.bulletPoints.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 w-full text-right sm:text-center mb-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 w-full text-right sm:text-center mb-6 sm:mb-10">
                     {slide.bulletPoints.map((point, idx) => (
                       <div 
                         key={idx} 
-                        className="bg-white/60 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 p-3 sm:p-4 rounded-xl backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-700/80 transition duration-300 shadow-sm flex items-center sm:block gap-3"
+                        className="bg-white/60 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 p-2 sm:p-4 rounded-xl backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-700/80 transition duration-300 shadow-sm flex items-center sm:block gap-3"
                       >
                         <div className="w-2 h-2 sm:w-3 sm:h-3 bg-primary rounded-full shrink-0 sm:mx-auto sm:mb-3"></div>
-                        <p className="text-sm sm:text-lg font-medium text-slate-800 dark:text-slate-100 leading-snug">{point}</p>
+                        <p className="text-xs sm:text-lg font-medium text-slate-800 dark:text-slate-100 leading-snug">{point}</p>
                       </div>
                     ))}
                   </div>
@@ -100,7 +101,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
 
                 {/* Images Grid (Render all images found in the slide) */}
                 {slide.images && slide.images.length > 0 && (
-                  <div className={`grid gap-4 mt-8 w-full ${
+                  <div className={`grid gap-4 mt-4 sm:mt-8 w-full ${
                       slide.images.length === 1 ? 'grid-cols-1 max-w-3xl mx-auto' : 
                       slide.images.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
                       'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
@@ -110,7 +111,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide, isActive, offset, zoomLeve
                         <img 
                             src={img} 
                             alt={`Content ${idx}`} 
-                            className="w-full h-auto object-contain max-h-[500px]" 
+                            className="w-full h-auto object-contain max-h-[300px] sm:max-h-[500px]" 
                         />
                       </div>
                     ))}

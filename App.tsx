@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 // @ts-ignore
-import * as JSZipModule from 'jszip';
+import JSZip from 'jszip';
 import WebcamHandler from './components/WebcamHandler';
 import SlideView from './components/SlideView';
 import { DEMO_SLIDES } from './constants';
@@ -40,6 +40,16 @@ const GESTURE_LABELS: Record<HandGesture, string> = {
   [HandGesture.I_LOVE_YOU]: '🤟 أحبك (Rock)',
   [HandGesture.NONE]: 'لا شيء',
 };
+
+// Stylized W Icon for Share
+const ShareIconW = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+     <path d="M4.5 3.75a.75.75 0 0 0-1.28.6l2.5 16a.75.75 0 0 0 1.48.02L9.6 11.5l2.4 8.87a.75.75 0 0 0 1.48-.02l2.5-16a.75.75 0 0 0-1.48-.22L12 16.5 9.48 7.22a.75.75 0 0 0-1.46.03L5.5 16.5 2.98 4.35a.75.75 0 0 0-1.48.22l3 16a.75.75 0 0 0 1.48 0l3-11.5 3 11.5a.75.75 0 0 0 1.48 0l3-16a.75.75 0 0 0-1.48-.22L12 11.5 9.48 2.22a.75.75 0 0 0-1.46 0L5.5 11.5 4.5 3.75Z" />
+     <path d="M2.25 3h19.5v18H2.25z" fill="none"/> {/* Bounding box check */}
+     <path d="M7 21L2 3h4l2.5 12L11 3h2l2.5 12L18 3h4l-5 18h-4L11 9l-2 12H7z" />
+  </svg>
+);
+
 
 const App: React.FC = () => {
   // --- State ---
@@ -194,6 +204,29 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: 'Smart Presenter',
+      text: 'جرب مُقدم العروض الذكي الذي يعمل بإيماءات اليد!',
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log('Share canceled');
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        showNotification("تم نسخ الرابط");
+      } catch (err) {
+        showNotification("تعذر المشاركة");
+      }
+    }
+  }, []);
+
   const nextSlide = useCallback(() => {
     setCurrentSlideIndex((prev) => Math.min(prev + 1, slides.length - 1));
   }, [slides.length]);
@@ -257,9 +290,6 @@ const App: React.FC = () => {
       const isPPT = file.name.toLowerCase().endsWith('.pptx');
 
       if (isPPT) {
-        // Safe JSZip initialization for various ESM environments
-        // @ts-ignore
-        const JSZip = (JSZipModule as any).default ?? JSZipModule;
         const zip = new JSZip();
         const content = await zip.loadAsync(file);
         
@@ -431,7 +461,7 @@ const App: React.FC = () => {
   const showControls = !isFullScreenMode || !isCursorHidden;
   const controlsClass = `transition-opacity duration-500 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`;
 
-  // Footer strictly hidden in fullscreen
+  // Footer strictly hidden in fullscreen and on very small landscape screens
   const footerClass = `transition-opacity duration-500 ${!isFullScreenMode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`;
   const cursorClass = isCursorHidden ? 'cursor-hidden' : '';
 
@@ -456,6 +486,11 @@ const App: React.FC = () => {
                 <span>📲</span> تثبيت التطبيق
               </button>
            )}
+           
+           <button onClick={handleShare} title="مشاركة" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition text-white">
+              <ShareIconW />
+           </button>
+
           <button onClick={toggleTheme} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
             {isDarkMode ? '🌙' : '☀️'}
           </button>
@@ -547,9 +582,17 @@ const App: React.FC = () => {
           >
             <svg className="w-5 h-5 text-slate-700 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           </button>
+
+           <button 
+             onClick={handleShare}
+             title="مشاركة"
+             className={`p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} text-slate-700 dark:text-slate-200`}
+           >
+              <ShareIconW />
+           </button>
         </div>
 
-        <h1 className={`text-[10px] sm:text-sm font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-4 py-1 rounded-full backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} max-w-[150px] sm:max-w-none truncate`}>
+        <h1 className={`hidden md:block text-[10px] sm:text-sm font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-4 py-1 rounded-full backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} max-w-[150px] sm:max-w-none truncate`}>
           مدرسة الشمال الابتدائية بنات
         </h1>
 
@@ -578,11 +621,12 @@ const App: React.FC = () => {
         ))}
       </div>
 
-      {/* --- New Footer (Requested Requirement) --- */}
-      <div className={`fixed bottom-0 left-0 w-full z-40 flex flex-col items-center justify-end pb-24 sm:pb-6 pointer-events-none ${footerClass}`}>
-         <div className="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl text-center max-w-[95%]">
-           <h2 className="text-sm sm:text-base font-bold text-indigo-600 dark:text-indigo-400">الرؤية: متعلم ريادي تنمية مستدامة</h2>
-           <p className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">إعداد وتطوير/ إيمان محمود</p>
+      {/* --- New Footer (Mobile Optimized) --- */}
+      <div className={`fixed bottom-0 left-0 w-full z-40 flex flex-col items-center justify-end pointer-events-none transition-all duration-300 ${!isFullScreenMode ? 'pb-24 sm:pb-6 opacity-100' : 'pb-0 opacity-0'}`}>
+         {/* Hide on short landscape screens to save space */}
+         <div className="hidden sm:block landscape:hidden landscape:sm:block bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl text-center max-w-[95%]">
+           <h2 className="text-xs sm:text-base font-bold text-indigo-600 dark:text-indigo-400">الرؤية: متعلم ريادي تنمية مستدامة</h2>
+           <p className="text-[10px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">إعداد وتطوير/ إيمان محمود</p>
          </div>
       </div>
 
@@ -670,25 +714,23 @@ const App: React.FC = () => {
         <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all duration-500 ease-out" style={{ width: `${((currentSlideIndex + 1) / slides.length) * 100}%` }} />
       </div>
 
-      {/* --- Bottom Controls --- */}
-      
-      {/* Mobile-Optimized Nav Buttons (Left/Right Split) */}
+      {/* --- Bottom Controls (Mobile Adjusted) --- */}
       <div className={`fixed bottom-0 left-0 w-full p-4 flex justify-between items-end z-40 pointer-events-none ${controlsClass}`}>
           
-          {/* Left Side: Prev Button (positioned after Webcam space) */}
-          <div className="pointer-events-auto ml-36 sm:ml-0">
+          {/* Left Side: Prev Button - Responsive margin for webcam */}
+          <div className="pointer-events-auto ml-16 sm:ml-36 transition-all duration-300">
              <button 
                 onClick={prevSlide}
                 disabled={currentSlideIndex === 0}
-                className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 active:scale-95 disabled:opacity-50 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-lg flex items-center justify-center border border-slate-200 dark:border-slate-700 active:scale-95 disabled:opacity-50 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
               >
-                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
              </button>
           </div>
 
           {/* Right Side: Next Button */}
           <div className="pointer-events-auto flex gap-4 items-end">
-             {/* Slide Counter */}
+             {/* Slide Counter - Hidden on very small screens */}
              <div className="hidden sm:block bg-black/50 text-white px-3 py-1 rounded-lg backdrop-blur text-sm font-mono mb-3">
                {currentSlideIndex + 1} / {slides.length}
              </div>
@@ -696,9 +738,9 @@ const App: React.FC = () => {
              <button 
                onClick={nextSlide}
                disabled={currentSlideIndex === slides.length - 1}
-               className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 disabled:opacity-50 transition-all hover:bg-indigo-600"
+               className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 disabled:opacity-50 transition-all hover:bg-indigo-600"
              >
-               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
              </button>
           </div>
       </div>
