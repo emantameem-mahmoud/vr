@@ -41,11 +41,11 @@ const GESTURE_LABELS: Record<HandGesture, string> = {
   [HandGesture.NONE]: 'لا شيء',
 };
 
-// Stylized W Icon for Share (Vercel-ish / Abstract W)
+// Stylized W Icon for Share (Abstract W shape)
 const ShareIconW = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-     <path d="M4 4l3 16 3-10 3 10 3-16H14L13 14 10 4H8l-3 10L4 4z" stroke="currentColor" strokeWidth="1" />
-     <path d="M12.06 8.5L9.69 16.32 7.03 4.5h2.38l1.32 7.7 2.37-7.7h1.9l2.37 7.7 1.32-7.7h2.38l-2.66 11.82L15.8 8.5h-3.74z" />
+     <path d="M4.5 4l2.5 16 3.5-11 3.5 11 2.5-16H14l-1.5 11L9.5 7h-1L5.5 18 4 4h-2z" stroke="currentColor" strokeWidth="0.5" />
+     <path d="M7 4h2l2 8 2-8h2l-3.5 14h-1L7 4z" fillOpacity="0.5"/>
   </svg>
 );
 
@@ -207,7 +207,7 @@ const App: React.FC = () => {
     const shareData = {
       title: 'Smart Presenter',
       text: 'جرب مُقدم العروض الذكي الذي يعمل بإيماءات اليد!',
-      url: window.location.href,
+      url: window.location.href, // This links to the current Vercel URL
     };
 
     if (navigator.share) {
@@ -474,7 +474,7 @@ const App: React.FC = () => {
 
         {/* Notification Toast */}
         {notification && (
-            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl animate-pulse">
+            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl animate-pulse whitespace-nowrap">
                 {notification}
             </div>
         )}
@@ -486,7 +486,7 @@ const App: React.FC = () => {
               </button>
            )}
            
-           <button onClick={handleShare} title="مشاركة" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition text-white">
+           <button onClick={handleShare} title="مشاركة التطبيق" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition text-white">
               <ShareIconW />
            </button>
 
@@ -540,7 +540,7 @@ const App: React.FC = () => {
       
       {/* Notification Toast (In App Mode) */}
       {notification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-2 rounded-full shadow-xl border border-slate-700">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-2 rounded-full shadow-xl border border-slate-700 whitespace-nowrap">
             {notification}
         </div>
       )}
@@ -584,7 +584,7 @@ const App: React.FC = () => {
 
            <button 
              onClick={handleShare}
-             title="مشاركة"
+             title="مشاركة التطبيق"
              className={`p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} text-slate-700 dark:text-slate-200`}
            >
               <ShareIconW />
@@ -622,10 +622,10 @@ const App: React.FC = () => {
 
       {/* --- New Footer (Mobile Optimized) --- */}
       <div className={`fixed bottom-0 left-0 w-full z-40 flex flex-col items-center justify-end pointer-events-none transition-all duration-300 ${!isFullScreenMode ? 'pb-24 sm:pb-6 opacity-100' : 'pb-0 opacity-0'}`}>
-         {/* Hide on short landscape screens to save space */}
-         <div className="hidden sm:block landscape:hidden landscape:sm:block bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl text-center max-w-[95%]">
-           <h2 className="text-xs sm:text-base font-bold text-indigo-600 dark:text-indigo-400">الرؤية: متعلم ريادي تنمية مستدامة</h2>
-           <p className="text-[10px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">إعداد وتطوير/ إيمان محمود</p>
+         {/* Hide on short landscape screens to save space. Make text smaller on mobile. */}
+         <div className="hidden sm:block landscape:hidden landscape:sm:block bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 sm:px-6 sm:py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl text-center max-w-[90%] sm:max-w-[95%]">
+           <h2 className="text-[10px] sm:text-xs md:text-base font-bold text-indigo-600 dark:text-indigo-400">الرؤية: متعلم ريادي تنمية مستدامة</h2>
+           <p className="text-[8px] sm:text-[10px] md:text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">إعداد وتطوير/ إيمان محمود</p>
          </div>
       </div>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v42-mobile-fix';
+const CACHE_NAME = 'smart-presenter-v43-fix-404';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -55,7 +55,7 @@ self.addEventListener('fetch', (event) => {
         } catch (error) {
           // If network fails, return cached index.html
           const cache = await caches.open(CACHE_NAME);
-          // Try variations of index path
+          // Try variations of index path to ensure we find the shell
           const cachedIndex = await cache.match('./index.html');
           return cachedIndex || await cache.match('index.html') || await cache.match('./');
         }
