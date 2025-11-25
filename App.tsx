@@ -196,7 +196,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleResetSlides = useCallback(() => {
-    if (window.confirm("هل أنت متأكد من إعادة تعيين العرض التقديمي؟")) {
+    if (window.confirm("هل أنت متأكد من مسح الشرائح والعودة للوضع الافتراضي؟")) {
       setSlides(DEMO_SLIDES);
       setCurrentSlideIndex(0);
       showNotification("تم إعادة تعيين الشرائح");
@@ -573,9 +573,10 @@ const App: React.FC = () => {
           <button 
             onClick={handleResetSlides}
             title="إعادة تعيين العرض"
-            className={`p-2 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} hover:text-red-500`}
+            className={`flex items-center gap-2 p-2 px-3 bg-white/80 dark:bg-slate-800/80 rounded-full shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition ${controlsClass} hover:text-red-500 group`}
           >
-            <svg className="w-5 h-5 text-slate-700 dark:text-slate-200 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <svg className="w-5 h-5 text-slate-700 dark:text-slate-200 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <span className="hidden sm:inline text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-red-500">إعادة تعيين</span>
           </button>
 
           <button 

@@ -1,7 +1,7 @@
 {
   "name": "مُقدم العروض الذكي",
   "short_name": "SmartPresenter",
-  "start_url": "./index.html",
+  "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",

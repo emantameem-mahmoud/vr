@@ -203,12 +203,26 @@ const WebcamHandler: React.FC<WebcamHandlerProps> = ({ onGestureDetected, isActi
 
         {!isMinimized && (
             <>
+                {/* Mirror Toggle Button */}
                 <button 
                   onClick={toggleMirror}
-                  className="absolute top-1 right-1 p-1 bg-black/40 rounded-full text-white/80 hover:bg-black/80 transition"
+                  className="absolute top-1 right-1 p-1 bg-black/40 rounded-full text-white/80 hover:bg-black/80 transition z-10"
+                  title="عكس الكاميرا"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
                 </button>
+
+                {/* Minimize Button */}
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
+                  className="absolute top-1 left-1 p-1 bg-black/40 rounded-full text-white/80 hover:bg-black/80 transition z-10"
+                  title="تصغير"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.5 12h-15" />
+                  </svg>
+                </button>
+
                 {isPaused && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/60 pointer-events-none">
                      <span className="text-2xl">⏸️</span>
