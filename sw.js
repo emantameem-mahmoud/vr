@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-presenter-v45-fix-icon-and-home';
+const CACHE_NAME = 'smart-presenter-v46-fix-load-error';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
